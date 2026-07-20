@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { MarkdownDoc } from "@/components/shared/MarkdownDoc";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { loadDoc } from "@/lib/docs/load-doc";
 import { listDocSlugs } from "@/lib/docs/registry";
 
@@ -24,7 +24,7 @@ export default async function DocPage({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <PageHeader title={doc.title} description="Product documentation" />
+      <SetPageChrome title={doc.title} description="Product documentation" />
       <MarkdownDoc markdown={doc.markdown} />
     </div>
   );

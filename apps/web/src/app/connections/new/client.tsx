@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { AppLoader } from "@/components/shared/AppLoader";
 import { ConfigFieldDef, ConnectionForm, ConnectionFormValues } from "@/components/connectors/ConnectionForm";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,7 @@ export default function NewConnectionClient() {
   if (loading) {
     return (
       <AppShell>
+        <SetPageChrome title="Add Connection" />
         <AppLoader label="Loading connectors…" />
       </AppShell>
     );
@@ -84,7 +85,7 @@ export default function NewConnectionClient() {
   if (plugins.length === 0) {
     return (
       <AppShell>
-        <PageHeader title="Add Connection" description="Install a connector first" />
+        <SetPageChrome title="Add Connection" description="Install a connector first" />
         <Card>
           <CardContent className="flex flex-col items-start gap-3 pt-6">
             <p className="text-sm text-muted-foreground">
@@ -101,7 +102,7 @@ export default function NewConnectionClient() {
 
   return (
     <AppShell>
-      <PageHeader title="Add Connection" description="Choose an installed connector, then configure it" />
+      <SetPageChrome title="Add Connection" description="Choose an installed connector, then configure it" />
       <Card>
         <CardContent className="flex flex-col gap-6 pt-6">
           <Field>

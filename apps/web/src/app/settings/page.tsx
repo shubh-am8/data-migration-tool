@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { ConfigEditor, ConfigEntry } from "@/components/shared/ConfigEditor";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api-client";
@@ -59,7 +59,7 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <PageHeader
+      <SetPageChrome
         title="Settings"
         description="App configuration — dashboard edits apply immediately where supported."
       />
