@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
 MODE="all"
-KEEP_INFRA=false
+KEEP_INFRA=true
+STOP_INFRA_ON_EXIT=false
 
 usage() {
   cat <<EOF
@@ -15,10 +16,11 @@ Usage: ./run-local-dev.sh [OPTIONS]
 Run the Data Migration Platform in local development mode.
 
 Options:
-  --frontend     Start Next.js dev server only (API must already be running)
-  --backend      Start infra + API + Worker (no frontend)
-  --keep-infra   On exit, leave Postgres/Redis running
-  --help         Show this help
+  --frontend             Start Next.js dev server only (API must already be running)
+  --backend              Start infra + API + Worker (no frontend)
+  --stop-infra-on-exit   On exit, docker compose down (default: leave infra running)
+  --keep-infra           Deprecated no-op (infra is kept by default)
+  --help                 Show this help
 
 With no flags: starts infra + API + Worker + Frontend (full stack).
 
@@ -35,6 +37,7 @@ parse_args() {
       --frontend) MODE="frontend" ;;
       --backend)  MODE="backend" ;;
       --keep-infra) KEEP_INFRA=true ;;
+      --stop-infra-on-exit) STOP_INFRA_ON_EXIT=true ;;
       --help|-h)  usage; exit 0 ;;
       *) echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -53,30 +56,6 @@ build_backend() {
   fi
 }
 
-clear_stale_infra_ports() {
-  local port pid
-  for port in 5432 6379; do
-    local pids
-    pids="$(pids_on_port "${port}")"
-    [[ -z "${pids}" ]] && continue
-
-    local safe=true
-    while read -r pid; do
-      [[ -z "${pid}" ]] && continue
-      if ! listener_is_project_infra "${port}" "${pid}"; then
-        safe=false
-        echo "Refusing to kill non-project listener on :${port} (PID ${pid})."
-      fi
-    done <<< "${pids}"
-
-    if [[ "${safe}" == "true" ]]; then
-      kill_port_listeners "${port}"
-    else
-      assert_ports_free "${port}"
-    fi
-  done
-}
-
 prepare_dev_stack() {
   local mode=$1
   case "${mode}" in
@@ -85,16 +64,12 @@ prepare_dev_stack() {
       assert_ports_free 3000
       ;;
     backend)
-      stop_infra
-      clear_stale_infra_ports
       kill_port_listeners 8080 8081
-      assert_ports_free 5432 6379 8080 8081
+      assert_ports_free 8080 8081
       ;;
     all)
-      stop_infra
-      clear_stale_infra_ports
       kill_port_listeners 8080 8081 3000
-      assert_ports_free 5432 6379 8080 8081 3000
+      assert_ports_free 8080 8081 3000
       ;;
   esac
 }
@@ -125,10 +100,12 @@ start_frontend() {
 
 on_exit() {
   echo ""
-  echo "Shutting down..."
+  echo "Shutting down app processes..."
   cleanup_pids
-  if [[ "${KEEP_INFRA}" == "false" && "${MODE}" != "frontend" ]]; then
+  if [[ "${STOP_INFRA_ON_EXIT}" == "true" && "${MODE}" != "frontend" ]]; then
     stop_infra || true
+  else
+    echo "Leaving Docker infra running (use Docker Desktop or --stop-infra-on-exit to stop)."
   fi
 }
 

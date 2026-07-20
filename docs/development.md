@@ -24,12 +24,13 @@ Open http://localhost:3000
 | `./run-local-dev.sh` | Postgres + Redis + API + Worker + Frontend |
 | `./run-local-dev.sh --backend` | Postgres + Redis + API + Worker |
 | `./run-local-dev.sh --frontend` | Frontend only (API must already run) |
-| `./run-local-dev.sh --keep-infra` | On Ctrl+C, leave Postgres/Redis running |
+| `./run-local-dev.sh --stop-infra-on-exit` | On Ctrl+C, stop Postgres/Redis via docker compose down |
+| `./run-local-dev.sh --keep-infra` | Deprecated no-op (infra stays running by default) |
 | `./run-local-dev.sh --help` | Show usage |
 
 ## Dev Script Flow
 
-On every start, `prepare_dev_stack` clears stale listeners on that mode's ports; for backend/all, it also tears down this project's Docker infra before starting.
+On every start, `prepare_dev_stack` clears stale listeners on that mode's app ports (8080/8081/3000). Docker infra (Postgres/Redis) is left running across restarts; use `--stop-infra-on-exit` to tear it down on exit.
 
 ```mermaid
 flowchart TD
