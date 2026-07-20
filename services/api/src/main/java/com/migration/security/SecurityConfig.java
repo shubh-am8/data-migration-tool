@@ -19,17 +19,20 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
+    private final IpWhitelistFilter ipWhitelistFilter;
     private final OAuth2AuthorizationRequestResolver authorizationRequestResolver;
     private final String corsOrigins;
     private final String frontendUrl;
     private final boolean authEnforced;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          IpWhitelistFilter ipWhitelistFilter,
                           OAuth2AuthorizationRequestResolver authorizationRequestResolver,
                           @Value("${app.cors-allowed-origins}") String corsOrigins,
                           @Value("${app.frontend-url}") String frontendUrl,
                           @Value("${app.auth.enforced:true}") boolean authEnforced) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.ipWhitelistFilter = ipWhitelistFilter;
         this.authorizationRequestResolver = authorizationRequestResolver;
         this.corsOrigins = corsOrigins;
         this.frontendUrl = frontendUrl;
@@ -44,11 +47,13 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers(
-                    "/api/health", "/actuator/health",
+                    "/api/health", "/actuator/health", "/actuator/health/**",
                     "/oauth2/**", "/login/oauth2/**",
                     "/api/auth/oauth2/success", "/api/auth/me", "/api/auth/logout"
                 ).permitAll();
                 if (authEnforced) {
+                    auth.requestMatchers("/actuator/**").authenticated();
+                    auth.requestMatchers("/api/admin/**").authenticated();
                     auth.anyRequest().authenticated();
                 } else {
                     auth.anyRequest().permitAll();
@@ -66,7 +71,8 @@ public class SecurityConfig {
                 .failureHandler((request, response, exception) ->
                     response.sendRedirect(frontendUrl + "/login?error=domain"))
             )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(ipWhitelistFilter, JwtAuthFilter.class);
         return http.build();
     }
 
