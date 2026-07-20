@@ -93,17 +93,15 @@ export function HotColdConfig({
         </>
       )}
       {showHot && (
-        <>
-          <Field>
-            <FieldLabel>Hot window (days)</FieldLabel>
-            <Input type="number" value={hotDays} onChange={(e) => onChange({ hotDays: Number(e.target.value) })} />
-          </Field>
-          <Field>
-            <FieldLabel>Timestamp column</FieldLabel>
-            <Input value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
-          </Field>
-        </>
+        <Field>
+          <FieldLabel>Hot window (days)</FieldLabel>
+          <Input type="number" value={hotDays} onChange={(e) => onChange({ hotDays: Number(e.target.value) })} />
+        </Field>
       )}
+      <Field>
+        <FieldLabel>Timestamp column</FieldLabel>
+        <Input value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
+      </Field>
       <Field>
         <FieldLabel>Min chunk duration (hours)</FieldLabel>
         <Input

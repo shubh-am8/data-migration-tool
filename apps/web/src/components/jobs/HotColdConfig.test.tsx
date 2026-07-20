@@ -21,4 +21,22 @@ describe("HotColdConfig", () => {
     expect(screen.getByText("Max chunk duration (hours)")).toBeInTheDocument();
     expect(screen.getByText("Hot window (days)")).toBeInTheDocument();
   });
+
+  it("shows timestamp column for cold-only mode", () => {
+    render(
+      <HotColdConfig
+        migrationMode="COLD_ONLY"
+        hotDays={7}
+        tsColumn="created_at"
+        rangeStart="2024-01-01T00:00"
+        rangeEndMode="NOW"
+        rangeEnd=""
+        minChunkDurationHours={24}
+        maxChunkDurationHours={168}
+        onChange={jest.fn()}
+      />
+    );
+    expect(screen.getByText("Timestamp column")).toBeInTheDocument();
+    expect(screen.queryByText("Hot window (days)")).not.toBeInTheDocument();
+  });
 });

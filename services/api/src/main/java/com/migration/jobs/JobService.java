@@ -155,10 +155,11 @@ public class JobService {
 
     static String buildHotColdFilter(JobEntity job, PhaseType phase) {
         if (job.getTsColumn() == null || job.getHotDays() == null) return null;
-        String col = "\"" + job.getTsColumn().replace("\"", "") + "\"";
+        Instant effectiveEnd = TimeWindowMath.effectiveEnd(job, Instant.now());
+        Instant hotBoundary = TimeWindowMath.hotBoundary(job, effectiveEnd);
         return switch (phase) {
-            case HOT -> col + " >= NOW() - INTERVAL '" + job.getHotDays() + " days'";
-            case COLD -> col + " < NOW() - INTERVAL '" + job.getHotDays() + " days'";
+            case HOT -> TimeWindowMath.timeRangeFilter(job.getTsColumn(), hotBoundary, effectiveEnd);
+            case COLD -> TimeWindowMath.timeRangeFilter(job.getTsColumn(), job.getRangeStart(), hotBoundary);
         };
     }
 
@@ -226,6 +227,9 @@ public class JobService {
         }
         if (job.getMigrationMode() != MigrationMode.HOT_ONLY) {
             if (job.getRangeStart() == null) throw new IllegalArgumentException("rangeStart required for cold migration");
+        }
+        if (job.getRangeStart() != null && job.getRangeEnd() != null && !job.getRangeEnd().isAfter(job.getRangeStart())) {
+            throw new IllegalArgumentException("rangeEnd must be after rangeStart");
         }
     }
 

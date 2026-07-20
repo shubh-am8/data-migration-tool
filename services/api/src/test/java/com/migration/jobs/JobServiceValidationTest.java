@@ -55,6 +55,16 @@ class JobServiceValidationTest {
     }
 
     @Test
+    void rejectsRangeEndNotAfterRangeStart() {
+        JobEntity job = new JobEntity();
+        job.setMigrationMode(MigrationMode.HOT_THEN_COLD);
+        job.setRangeStart(Instant.parse("2024-02-01T00:00:00Z"));
+        job.setRangeEndMode(RangeEndMode.FIXED);
+        job.setRangeEnd(Instant.parse("2024-01-01T00:00:00Z"));
+        assertThrows(IllegalArgumentException.class, () -> JobService.validateRangeChunks(job));
+    }
+
+    @Test
     void acceptsValidRangeAndChunkConfig() {
         JobEntity job = new JobEntity();
         job.setMigrationMode(MigrationMode.HOT_THEN_COLD);
