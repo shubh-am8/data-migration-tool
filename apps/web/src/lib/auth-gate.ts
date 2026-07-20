@@ -7,3 +7,8 @@ export function shouldRedirectToLogin(pathname: string, hasToken: boolean): bool
   if (isPublicPath(pathname)) return false;
   return !hasToken;
 }
+
+export function shouldRedirectAuthenticatedToApp(pathname: string, hasToken: boolean): boolean {
+  if (!hasToken) return false;
+  return pathname === "/login" || pathname.startsWith("/login?");
+}

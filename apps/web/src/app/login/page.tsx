@@ -1,14 +1,37 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { AppLoader } from "@/components/shared/AppLoader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { loginWithGoogle } from "@/lib/api-client";
+import { apiFetch, loginWithGoogle } from "@/lib/api-client";
+import { postLoginDestination } from "@/lib/login-redirect";
 
 function LoginContent() {
+  const router = useRouter();
   const params = useSearchParams();
   const error = params.get("error");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<{ authenticated: boolean }>("/api/auth/me")
+      .then((me) => {
+        if (cancelled) return;
+        const dest = postLoginDestination(me);
+        if (dest) router.replace(dest);
+        else setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (!ready) return <AppLoader label="Checking session…" />;
 
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
