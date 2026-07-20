@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+# UI patterns (apps/web)
+
+- Font: Inter via `--font-inter` / `font-sans`. No circular `--font-sans: var(--font-sans)`.
+- Loading: `AppLoader` or `DataTableSkeleton`. No ad-hoc spinners.
+- Lists: `DataTable` + `PaginationBar` (`page`/`size` 10–500). No unbounded `findAll` from UI.
+- Empty list CTAs: connector-aware — no installed connectors → Marketplace; connectors exist but list empty → primary create route (e.g. Add Connection).
+- Toasts: `notify` from `@/lib/notify`. No `toast` from sonner in feature pages.
+- API: `apiFetch` / `logout` from `@/lib/api-client` (credentials included).
+- Theme: CSS variables in `globals.css` only. Semantic classes. No manual `dark:` brand overrides.
+- Buttons: prefer `success` / `warning` / `danger` / `info` / `pill` for colorful actions.
+- Forms: `FieldGroup` + `Field` + shadcn inputs/selects. Settings enums use `Select`, not free text.
+- Sensitive settings: Show reveals; Hide remasks locally to `********` (never call reveal again).
+- IP whitelist: hide editor when OPEN; labeled rows when RESTRICTED.
+- Spacing: `flex` + `gap-*`, not `space-y-*`.
+- Compose shadcn (`Card`, `Alert`, `Sheet`, `Table`, `Badge`, `Avatar`) before custom markup.
+
+## Reusable components (prefer these)
+
+- **Critical destructive actions** (revoke, delete, uninstall): use `EmailConfirmDialog` — show subject avatar/name/email; require typing that email before confirm. Never native `window.confirm` for admin-critical ops.
+- **In-app docs**: register slugs in `lib/docs/registry.ts`; render via `/docs/[slug]` + `MarkdownDoc`. Link with `DocLink` (truncating pill). Never `fetch` arbitrary paths or enable `rehype-raw`.
+- **Empty list CTAs**: if no installed connectors → Marketplace; if connectors exist but list empty → primary create route (e.g. Add Connection). Do not hardcode “Install a connector first” when connectors are installed.
+- **Pagination**: `DataTable` + `PaginationBar`; hide bar when `totalElements === 0`; keep Rows select and Prev/Next on one `items-center` row.
