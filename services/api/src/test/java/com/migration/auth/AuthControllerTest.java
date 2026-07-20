@@ -30,7 +30,8 @@ class AuthControllerTest {
     void meReturnsUserWhenAuthenticated() {
         JwtService jwtService = new JwtService(
             "dev-secret-change-in-production-min-32-chars!!", 24, "migration_token");
-        UserService userService = new UserService(userRepository, new OAuthDomainValidator(appConfigService));
+        when(appConfigService.get("allowed_email_domain")).thenReturn("yourcompany.com");
+        UserService userService = new UserService(userRepository, new OAuthDomainValidator(appConfigService), appConfigService);
         AuthController controller = new AuthController(
             userService, jwtService, userRepository, "http://localhost:3000", false);
 
@@ -52,7 +53,7 @@ class AuthControllerTest {
     @Test
     void meReturnsFalseWhenUnauthenticated() {
         AuthController controller = new AuthController(
-            new UserService(userRepository, new OAuthDomainValidator(appConfigService)),
+            new UserService(userRepository, new OAuthDomainValidator(appConfigService), appConfigService),
             new JwtService("dev-secret-change-in-production-min-32-chars!!", 24, "migration_token"),
             userRepository, "http://localhost:3000", false);
 

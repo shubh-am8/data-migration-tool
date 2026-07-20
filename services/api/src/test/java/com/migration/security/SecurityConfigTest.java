@@ -22,9 +22,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.when;
 
 @WebMvcTest(controllers = ConnectionController.class)
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtService.class, GoogleOAuth2Config.class,
+@Import({SecurityConfig.class, JwtAuthFilter.class, IpWhitelistFilter.class, JwtService.class, GoogleOAuth2Config.class,
     ConnectionService.class, ConnectorPluginRegistry.class, SecretCipher.class,
     SecurityConfigTest.OAuthTestConfig.class})
 @TestPropertySource(properties = {
@@ -47,10 +48,27 @@ class SecurityConfigTest {
     @MockBean
     AppConfigService appConfigService;
 
+    @MockBean
+    com.migration.auth.UserRepository userRepository;
+
+    @MockBean
+    com.migration.auth.UserService userService;
+
     @Test
     void protectedEndpointReturns401WithoutToken() throws Exception {
         mockMvc.perform(get("/api/connections"))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void ipWhitelistFilterRunsBeforeJwtAuthFilter() throws Exception {
+        when(appConfigService.get("ip_whitelist_mode")).thenReturn("RESTRICTED");
+        when(appConfigService.get("ip_whitelist")).thenReturn("[\"203.0.113.9\"]");
+
+        // No JWT cookie either, but the 403 (not 401) proves IpWhitelistFilter
+        // rejected the request before JwtAuthFilter/authorization ever ran.
+        mockMvc.perform(get("/api/connections"))
+            .andExpect(status().isForbidden());
     }
 
     @Configuration

@@ -1,6 +1,9 @@
 package com.migration.security;
 
 import com.migration.auth.JwtService;
+import com.migration.auth.UserEntity;
+import com.migration.auth.UserRepository;
+import com.migration.auth.UserService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,13 +17,18 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
+    private final UserRepository userRepository;
+    private final UserService userService;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, UserRepository userRepository, UserService userService) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
+        this.userService = userService;
     }
 
     @Override
@@ -30,9 +38,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 Claims claims = jwtService.parseToken(token);
-                var auth = new UsernamePasswordAuthenticationToken(
-                    claims.get("email"), null, List.of());
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                UUID userId = UUID.fromString(claims.getSubject());
+                Integer ver = claims.get("ver", Integer.class);
+                UserEntity user = userRepository.findById(userId).orElse(null);
+                if (user != null
+                    && user.getRevokedAt() == null
+                    && (ver == null || ver == user.getTokenVersion())) {
+                    userService.touchLastSeen(user);
+                    var auth = new UsernamePasswordAuthenticationToken(
+                        user.getEmail(), null, List.of());
+                    auth.setDetails(user.getId());
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             } catch (Exception ignored) {
                 // invalid token — continue unauthenticated
             }
