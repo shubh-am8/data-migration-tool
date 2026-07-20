@@ -1,6 +1,9 @@
 ---
-alwaysApply: true
+description: Next.js UI conventions for apps/web
+globs: apps/web/**
+alwaysApply: false
 ---
+
 # UI patterns (apps/web)
 
 - Font: Inter via `--font-inter` / `font-sans`. No circular `--font-sans: var(--font-sans)`.
@@ -20,6 +23,6 @@ alwaysApply: true
 ## Reusable components (prefer these)
 
 - **Critical destructive actions** (revoke, delete, uninstall): use `EmailConfirmDialog` — show subject avatar/name/email; require typing that email before confirm. Never native `window.confirm` for admin-critical ops.
-- **In-app docs**: register slugs in `lib/docs/registry.ts`; render via `/docs/[slug]` + `MarkdownDoc`. Link with `DocLink` (truncating pill). Never `fetch` arbitrary paths or enable `rehype-raw`.
+- **In-app docs**: register slugs in `lib/docs/registry.ts`; render via `/docs/[slug]` + `MarkdownDoc` (Mermaid fences via `MermaidBlock`). Link with `DocLink` (truncating pill). Never `fetch` arbitrary paths or enable `rehype-raw`.
 - **Empty list CTAs**: if no installed connectors → Marketplace; if connectors exist but list empty → primary create route (e.g. Add Connection). Do not hardcode “Install a connector first” when connectors are installed.
 - **Pagination**: `DataTable` + `PaginationBar`; hide bar when `totalElements === 0`; keep Rows select and Prev/Next on one `items-center` row.

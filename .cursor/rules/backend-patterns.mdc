@@ -1,0 +1,15 @@
+---
+description: Spring Boot / Java backend conventions for API, worker, domain, connectors
+globs: "{services/**,packages/**,connectors/**}"
+alwaysApply: false
+---
+
+# Backend patterns
+
+- Java 21, Spring Boot 3.3; prefer existing packages under `com.migration.*`.
+- Trust boundaries: validate at controllers; never log secrets or decrypted passwords.
+- Config: env for secrets (JWT, encryption, OAuth); DB `app_config` for runtime tunables.
+- Connectors: JAR SPI only — no `new PostgresqlConnectorPlugin()` in worker/API.
+- Persistence: JPA entities in `packages/domain`; Flyway only in API (`ddl-auto: validate`).
+- Tests: smallest failing unit/IT that proves the bug; no unbounded `findAll` in new APIs — page with `page`/`size`.
+- Errors: fail closed on auth; use existing exception advice / GSpace hooks without duplicating notifiers.

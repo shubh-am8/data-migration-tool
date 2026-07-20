@@ -25,6 +25,7 @@ troubleshooting.
 
 - [ ] Changes build and tests pass (`mvn test`, `cd apps/web && npm test`)
 - [ ] No secrets, `.env`, or `.pnpm-store` committed
+- [ ] Backend changes follow [.cursor/rules/backend-patterns.mdc](.cursor/rules/backend-patterns.mdc)
 - [ ] UI changes follow [.cursor/rules/ui-patterns.mdc](.cursor/rules/ui-patterns.mdc)
 - [ ] Connector/marketplace changes follow [.cursor/rules/connectors-marketplace.mdc](.cursor/rules/connectors-marketplace.mdc)
 - [ ] Docs updated when behavior or configuration changes
