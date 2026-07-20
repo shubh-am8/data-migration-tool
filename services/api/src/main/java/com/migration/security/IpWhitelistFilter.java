@@ -1,6 +1,6 @@
 package com.migration.security;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.migration.config.AppConfigService;
 import jakarta.servlet.FilterChain;
@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -41,14 +42,13 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
             return;
         }
         if (!"RESTRICTED".equalsIgnoreCase(mode.trim())) {
-            // Unknown mode → fail closed
             response.setStatus(403);
             response.setContentType("application/json");
             response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"Invalid IP whitelist mode\"}");
             return;
         }
         String clientIp = resolveClientIp(request);
-        List<String> allowed = parseList(appConfigService.get("ip_whitelist"));
+        List<String> allowed = parseAllowedIps(appConfigService.get("ip_whitelist"));
         if (IpMatcher.matches(clientIp, allowed)) {
             filterChain.doFilter(request, response);
             return;
@@ -59,15 +59,33 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
     }
 
     static String resolveClientIp(HttpServletRequest request) {
-        // Prefer remoteAddr: with server.forward-headers-strategy=framework, Spring
-        // rewrites this from trusted Forwarded/XFF; raw client XFF is not trusted here.
         return request.getRemoteAddr();
     }
 
-    private List<String> parseList(String raw) {
+    /**
+     * Accepts legacy {@code ["1.2.3.4"]} or labeled {@code [{"label":"VPN","ip":"1.2.3.4"}]}.
+     */
+    List<String> parseAllowedIps(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
         try {
-            return objectMapper.readValue(raw, new TypeReference<>() {});
+            JsonNode root = objectMapper.readTree(raw);
+            if (!root.isArray()) {
+                return List.of(raw.trim());
+            }
+            List<String> ips = new ArrayList<>();
+            for (JsonNode node : root) {
+                if (node.isTextual()) {
+                    String ip = node.asText().trim();
+                    if (!ip.isEmpty()) ips.add(ip);
+                } else if (node.isObject()) {
+                    JsonNode ipNode = node.has("ip") ? node.get("ip") : node.get("cidr");
+                    if (ipNode != null && ipNode.isTextual()) {
+                        String ip = ipNode.asText().trim();
+                        if (!ip.isEmpty()) ips.add(ip);
+                    }
+                }
+            }
+            return ips;
         } catch (Exception e) {
             return List.of(raw.trim());
         }

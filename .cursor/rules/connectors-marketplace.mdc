@@ -1,0 +1,14 @@
+---
+description: Connector marketplace and JAR plugin conventions
+globs: "{services/**/connectors/**,packages/connector-sdk/**,connectors/**,apps/web/src/app/connectors/**,apps/web/src/components/connectors/**}"
+alwaysApply: false
+---
+
+# Connectors & marketplace
+
+- Connectors are JARs under `app.plugins.dir` (`bundled/` + `installed/`), loaded via `PluginJarLoader` + `ServiceLoader`.
+- Built-in PostgreSQL is always listed; `enabled=false` until Marketplace **Install** copies the bundled JAR.
+- Connections require catalog `enabled=true` **and** a loaded registry plugin. Never hardcode `?plugin=postgresql` as the only path.
+- Custom connectors: implement `ConnectorPlugin`, ship SPI + JAR, upload via `POST /api/marketplace/upload` (admin).
+- Worker and API share the same plugins dir; do not hardcode `new PostgresqlConnectorPlugin()`.
+- Docs: `docs/connectors/adding-a-connector.md`, `docs/marketplace.md`.

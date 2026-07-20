@@ -1,0 +1,17 @@
+:80 {
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8080
+    }
+    handle /oauth2/* {
+        reverse_proxy 127.0.0.1:8080
+    }
+    handle /login/* {
+        reverse_proxy 127.0.0.1:8080
+    }
+    handle /actuator/* {
+        reverse_proxy 127.0.0.1:8080
+    }
+    handle {
+        reverse_proxy 127.0.0.1:3000
+    }
+}

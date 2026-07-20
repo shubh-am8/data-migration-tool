@@ -20,10 +20,13 @@ public final class RuntimeConfigCatalog {
     ) {}
 
     private static final List<Entry> ENTRIES = List.of(
+        entry("ip_whitelist_mode", "IP_WHITELIST_MODE", null, "OPEN", true, false, false, v ->
+            v == null || v.isBlank() || "OPEN".equalsIgnoreCase(v) || "RESTRICTED".equalsIgnoreCase(v)),
+        entry("ip_whitelist", "IP_WHITELIST", null, "[]", true, false, false, RuntimeConfigValidators::ipWhitelistJson),
         entry("min_threads_per_job", "MIN_THREADS_PER_JOB", null, "1", true, false, false, RuntimeConfigValidators::positiveInt),
         entry("max_threads_per_job", "MAX_THREADS_PER_JOB", null, "8", true, false, false, RuntimeConfigValidators::positiveInt),
         entry("gspace_webhook_url", "GSPACE_WEBHOOK_URL", "app.gspace-webhook-url", "", true, true, false, v -> true),
-        entry("google_client_id", "GOOGLE_CLIENT_ID", null, "", true, false, false, v -> true),
+        entry("google_client_id", "GOOGLE_CLIENT_ID", null, "", true, true, false, v -> true),
         entry("google_client_secret", "GOOGLE_CLIENT_SECRET", null, "", true, true, false, v -> true),
         entry("allowed_email_domain", "ALLOWED_EMAIL_DOMAIN", "app.auth.allowed-email-domain", "", true, false, false, v -> true)
     );

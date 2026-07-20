@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: migration-platform
+  labels:
+    app: migration-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: migration-platform
+  template:
+    metadata:
+      labels:
+        app: migration-platform
+    spec:
+      containers:
+        - name: app
+          image: migration-platform:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: AUTH_COOKIE_SECURE
+              value: "true"
+            - name: AUTH_ENFORCED
+              value: "true"
+            - name: FRONTEND_URL
+              value: "https://migration.example.com"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "https://migration.example.com"
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://migration.example.com"
+            - name: APP_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: migration-platform-secrets
+                  key: app-db-url
+            - name: APP_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: migration-platform-secrets
+                  key: app-db-user
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: migration-platform-secrets
+                  key: app-db-password
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: migration-platform-secrets
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: migration-platform-secrets
+                  key: encryption-key
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: migration-platform-secrets
+                  key: google-client-id
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: migration-platform-secrets
+                  key: google-client-secret
+            - name: ALLOWED_EMAIL_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: migration-platform-config
+                  key: allowed-email-domain
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 80
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi

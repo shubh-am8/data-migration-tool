@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+apps/web/node_modules/
+apps/web/.next/
+target/
+**/**/target/
+
+# Environment
+.env
+.env.local
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Dev scratch
+.dev/
+.superpowers/
+
+# Git
+.git/
+
+# Logs
+*.log

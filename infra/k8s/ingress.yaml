@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: migration-platform
+  annotations:
+    # AWS Load Balancer Controller — ALB terminates TLS and appends X-Forwarded-For
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT:certificate/CERT-ID
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Preserve client IP in X-Forwarded-For (default for ALB; explicit for clarity)
+    alb.ingress.kubernetes.io/load-balancer-attributes: routing.http.xff_client_port.enabled=true
+spec:
+  ingressClassName: alb
+  rules:
+    - host: migration.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: migration-platform
+                port:
+                  number: 80

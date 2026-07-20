@@ -44,7 +44,13 @@ parse_args() {
 
 build_backend() {
   echo "Building backend modules..."
-  (cd "${ROOT_DIR}" && mvn -q -pl services/api,services/worker -am install -DskipTests)
+  (cd "${ROOT_DIR}" && mvn -q -pl services/api,services/worker,connectors/postgresql -am install -DskipTests)
+  mkdir -p "${ROOT_DIR}/data/plugins/bundled" "${ROOT_DIR}/data/plugins/installed"
+  PG_JAR="${ROOT_DIR}/connectors/postgresql/target/postgresql-connector-0.1.0-SNAPSHOT.jar"
+  if [[ -f "${PG_JAR}" ]]; then
+    cp -f "${PG_JAR}" "${ROOT_DIR}/data/plugins/bundled/postgresql.jar"
+    echo "Seeded data/plugins/bundled/postgresql.jar"
+  fi
 }
 
 clear_stale_infra_ports() {
@@ -95,14 +101,14 @@ prepare_dev_stack() {
 
 start_api() {
   echo "Starting API (port 8080)..."
-  (cd "${ROOT_DIR}/services/api" && mvn -q spring-boot:run) &
+  (cd "${ROOT_DIR}/services/api" && PLUGINS_DIR="${ROOT_DIR}/data/plugins" mvn -q spring-boot:run) &
   record_pid $!
   wait_for_port localhost 8080 120 || { echo "API failed to start on :8080"; exit 1; }
 }
 
 start_worker() {
   echo "Starting Worker (port 8081)..."
-  (cd "${ROOT_DIR}/services/worker" && mvn -q spring-boot:run) &
+  (cd "${ROOT_DIR}/services/worker" && PLUGINS_DIR="${ROOT_DIR}/data/plugins" mvn -q spring-boot:run) &
   record_pid $!
   wait_for_port localhost 8081 120 || { echo "Worker failed to start on :8081"; exit 1; }
 }

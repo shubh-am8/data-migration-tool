@@ -24,7 +24,8 @@ class AppConfigServiceTest {
     @Test
     void editableKeysAreDefined() {
         assertTrue(AppConfigService.EDITABLE_KEYS.contains("max_threads_per_job"));
-        assertFalse(AppConfigService.EDITABLE_KEYS.contains("ip_whitelist"));
+        assertTrue(AppConfigService.EDITABLE_KEYS.contains("ip_whitelist"));
+        assertTrue(AppConfigService.EDITABLE_KEYS.contains("ip_whitelist_mode"));
     }
 
     @Test

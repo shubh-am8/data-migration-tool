@@ -101,6 +101,23 @@ class IpWhitelistFilterTest {
     }
 
     @Test
+    void restrictedModeAllowsLabeledIpEntries() throws Exception {
+        AppConfigService cfg = mock(AppConfigService.class);
+        when(cfg.get("ip_whitelist_mode")).thenReturn("RESTRICTED");
+        when(cfg.get("ip_whitelist")).thenReturn("[{\"label\":\"VPN\",\"ip\":\"203.0.113.9\"}]");
+        IpWhitelistFilter filter = new IpWhitelistFilter(cfg);
+
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/jobs");
+        req.setRemoteAddr("203.0.113.9");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+        boolean[] reached = {false};
+
+        filter.doFilter(req, res, (r, s) -> reached[0] = true);
+
+        assertTrue(reached[0]);
+    }
+
+    @Test
     void healthAndOauthPathsAreNeverBlocked() throws Exception {
         AppConfigService cfg = mock(AppConfigService.class);
         when(cfg.get("ip_whitelist_mode")).thenReturn("RESTRICTED");

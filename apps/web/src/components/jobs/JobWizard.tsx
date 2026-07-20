@@ -20,7 +20,9 @@ import { HotColdConfig } from "./HotColdConfig";
 import { ConflictConfig } from "./ConflictConfig";
 import { AlertConfig } from "./AlertConfig";
 import { apiFetch } from "@/lib/api-client";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
+import { LiveLogTerminal } from "@/components/shared/LiveLogTerminal";
+import type { PageResponse } from "@/components/shared/PaginationBar";
 
 interface JobWizardProps {
   jobId?: string;
@@ -55,9 +57,14 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [progressIntervalMin, setProgressIntervalMin] = useState<number | "">(30);
   const [webhookOverride, setWebhookOverride] = useState("");
   const [preflight, setPreflight] = useState<{ recommendations?: Array<{ reason: string }> } | null>(null);
+  const [testLines, setTestLines] = useState<string[]>([]);
+  const [testPassed, setTestPassed] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    apiFetch<typeof connections>("/api/connections").then(setConnections).catch(console.error);
+    apiFetch<PageResponse<{ id: string; name: string }> | Array<{ id: string; name: string }>>("/api/connections?page=0&size=100")
+      .then((r) => setConnections(Array.isArray(r) ? r : r.content ?? []))
+      .catch((e: Error) => notify.error("Failed to load connections", e.message));
   }, []);
 
   useEffect(() => {
@@ -104,8 +111,66 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
     } else {
       await apiFetch("/api/jobs", { method: "POST", body: JSON.stringify(body) });
     }
-    toast.success("Job saved");
+    notify.success("Job saved");
     onComplete();
+  }
+
+  async function runTestJob() {
+    if (!sourceId || !destId || !schema || !table) {
+      notify.warning("Select source, destination, schema, and table first");
+      return;
+    }
+    setTesting(true);
+    setTestPassed(false);
+    setTestLines([]);
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    try {
+      const res = await fetch(`${API_URL}/api/jobs/test`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({
+          sourceConnectionId: sourceId,
+          destConnectionId: destId,
+          schema,
+          table: isPartition && partitionName ? partitionName : table,
+          limit: 5,
+        }),
+      });
+      if (!res.ok || !res.body) {
+        notify.error("Test failed", `HTTP ${res.status}`);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop() || "";
+        for (const part of parts) {
+          const dataLine = part.split("\n").find((l) => l.startsWith("data:"));
+          if (!dataLine) continue;
+          try {
+            const json = JSON.parse(dataLine.slice(5).trim()) as { line?: string; status?: string };
+            if (json.line) setTestLines((l) => [...l, json.line!]);
+            if (json.status === "passed") {
+              setTestPassed(true);
+              notify.success("Test passed — truncate test rows before creating the job");
+            }
+            if (json.status === "failed") notify.error("Test failed");
+          } catch {
+            /* ignore parse errors */
+          }
+        }
+      }
+    } catch (e) {
+      notify.error("Test error", e instanceof Error ? e.message : undefined);
+    } finally {
+      setTesting(false);
+    }
   }
 
   async function runPreflight(id: string) {
@@ -188,8 +253,24 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
         {preflight?.recommendations?.map((r, i) => (
           <Alert key={i}><AlertTitle>Index recommendation</AlertTitle><AlertDescription>{r.reason}</AlertDescription></Alert>
         ))}
+        <div className="flex flex-col gap-2">
+          <Button variant="info" disabled={testing} onClick={runTestJob}>
+            {testing ? "Testing…" : "Test Job"}
+          </Button>
+          <LiveLogTerminal lines={testLines} />
+          {testPassed && (
+            <Alert>
+              <AlertTitle>Delete test rows before create</AlertTitle>
+              <AlertDescription>
+                Truncate or delete any sandboxed test rows on the destination table, then save the job.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
         <div className="flex gap-2">
-          <Button onClick={saveJob}>Save Job</Button>
+          <Button variant="success" onClick={saveJob} disabled={!jobId && !testPassed}>
+            {jobId ? "Save Job" : "Add Job"}
+          </Button>
           {jobId && <Button variant="outline" onClick={() => runPreflight(jobId)}>Run Preflight</Button>}
         </div>
       </TabsContent>

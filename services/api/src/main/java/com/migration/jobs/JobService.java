@@ -1,10 +1,13 @@
 package com.migration.jobs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.migration.common.PageResponse;
 import com.migration.config.AppConfigService;
 import com.migration.connectors.*;
 import com.migration.connectors.ConnectionService;
 import com.migration.notifications.GspaceNotifier;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,8 +44,11 @@ public class JobService {
         this.gspaceNotifier = gspaceNotifier;
     }
 
-    public List<Map<String, Object>> listAll() {
-        return jobRepository.findAll().stream().map(this::toDto).toList();
+    public PageResponse<Map<String, Object>> list(Integer page, Integer size) {
+        int p = PageResponse.clampPage(page);
+        int s = PageResponse.clampSize(size);
+        var result = jobRepository.findAll(PageRequest.of(p, s, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return PageResponse.of(result.getContent().stream().map(this::toDto).toList(), p, s, result.getTotalElements());
     }
 
     public Map<String, Object> get(UUID id) {
