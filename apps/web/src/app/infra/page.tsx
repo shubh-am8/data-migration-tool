@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { useRefreshToken, useSetPageChrome } from "@/components/layout/PageChromeContext";
 import { AppLoader } from "@/components/shared/AppLoader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,19 +49,33 @@ function statusLabel(raw?: string) {
 }
 
 export default function InfraPage() {
+  return (
+    <AppShell>
+      <InfraBody />
+    </AppShell>
+  );
+}
+
+function InfraBody() {
+  useSetPageChrome({
+    title: "Infra",
+    description: "Actuator-backed visibility for API and Worker (last 3 hours in memory)",
+  });
+  const refreshToken = useRefreshToken();
+
   const [data, setData] = useState<InfraSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = () =>
-      apiFetch<InfraSnapshot>("/api/admin/infra")
-        .then(setData)
-        .catch((e: Error) => notify.error("Infra load failed", e.message))
-        .finally(() => setLoading(false));
-    load();
-    const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
+  const load = useCallback(() => {
+    apiFetch<InfraSnapshot>("/api/admin/infra")
+      .then(setData)
+      .catch((e: Error) => notify.error("Infra load failed", e.message))
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load, refreshToken]);
 
   const chartData = useMemo(
     () =>
@@ -78,110 +92,102 @@ export default function InfraPage() {
   const apiStatus = statusLabel(data?.api?.status);
   const workerStatus = statusLabel(data?.worker?.status);
 
-  return (
-    <AppShell>
-      <PageHeader
-        title="Infra"
-        description="Actuator-backed visibility for API and Worker (last 3 hours in memory)"
-      />
-      {loading && !data ? (
-        <AppLoader />
-      ) : (
-        <div className="flex flex-col gap-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="min-w-0">
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle className="truncate">API</CardTitle>
-                <Badge
-                  variant={apiStatus === "UP" ? "secondary" : "destructive"}
-                  className="max-w-[8rem] truncate rounded-full"
-                >
-                  {apiStatus}
-                </Badge>
-              </CardHeader>
-              <CardContent className="grid gap-2">
-                <StatCard title="CPU" value={fmtCpu(data?.api?.cpu)} />
-                <StatCard title="Memory" value={fmtMem(data?.api?.memUsedBytes)} />
-              </CardContent>
-            </Card>
-            <Card className="min-w-0">
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle className="truncate">Worker</CardTitle>
-                <Badge
-                  variant={workerStatus === "UP" ? "secondary" : "destructive"}
-                  className="max-w-[8rem] truncate rounded-full"
-                >
-                  {workerStatus}
-                </Badge>
-              </CardHeader>
-              <CardContent className="grid gap-2">
-                <StatCard title="CPU" value={fmtCpu(data?.worker?.cpu)} />
-                <StatCard title="Memory" value={fmtMem(data?.worker?.memUsedBytes)} />
-                {data?.worker?.error && (
-                  <p className="truncate text-sm text-destructive" title={data.worker.error}>
-                    {data.worker.error}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="min-w-0">
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle className="truncate">Web (Next.js)</CardTitle>
-                <Badge variant="secondary" className="rounded-full">
-                  {data?.web?.status ?? "UI"}
-                </Badge>
-              </CardHeader>
-              <CardContent className="grid gap-2">
-                <StatCard title="Build" value={data?.web?.buildId ?? webBuild} />
-                <p className="text-sm text-muted-foreground">
-                  {data?.web?.note ??
-                    "Process CPU/RAM for Next.js is host-level only."}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+  return loading && !data ? (
+    <AppLoader />
+  ) : (
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="truncate">API</CardTitle>
+            <Badge
+              variant={apiStatus === "UP" ? "secondary" : "destructive"}
+              className="max-w-[8rem] truncate rounded-full"
+            >
+              {apiStatus}
+            </Badge>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <StatCard title="CPU" value={fmtCpu(data?.api?.cpu)} />
+            <StatCard title="Memory" value={fmtMem(data?.api?.memUsedBytes)} />
+          </CardContent>
+        </Card>
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="truncate">Worker</CardTitle>
+            <Badge
+              variant={workerStatus === "UP" ? "secondary" : "destructive"}
+              className="max-w-[8rem] truncate rounded-full"
+            >
+              {workerStatus}
+            </Badge>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <StatCard title="CPU" value={fmtCpu(data?.worker?.cpu)} />
+            <StatCard title="Memory" value={fmtMem(data?.worker?.memUsedBytes)} />
+            {data?.worker?.error && (
+              <p className="truncate text-sm text-destructive" title={data.worker.error}>
+                {data.worker.error}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="min-w-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="truncate">Web (Next.js)</CardTitle>
+            <Badge variant="secondary" className="rounded-full">
+              {data?.web?.status ?? "UI"}
+            </Badge>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <StatCard title="Build" value={data?.web?.buildId ?? webBuild} />
+            <p className="text-sm text-muted-foreground">
+              {data?.web?.note ??
+                "Process CPU/RAM for Next.js is host-level only."}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-          {chartData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>API metrics (3h ring)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-64 w-full">
-                  <LineChart data={chartData}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis dataKey="t" tickLine={false} axisLine={false} minTickGap={32} />
-                    <YAxis tickLine={false} axisLine={false} width={40} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line
-                      type="monotone"
-                      dataKey="cpuPct"
-                      stroke="var(--color-cpuPct)"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="memMb"
-                      stroke="var(--color-memMb)"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="poolActive"
-                      stroke="var(--color-poolActive)"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>API metrics (3h ring)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-64 w-full">
+              <LineChart data={chartData}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="t" tickLine={false} axisLine={false} minTickGap={32} />
+                <YAxis tickLine={false} axisLine={false} width={40} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line
+                  type="monotone"
+                  dataKey="cpuPct"
+                  stroke="var(--color-cpuPct)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="memMb"
+                  stroke="var(--color-memMb)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="poolActive"
+                  stroke="var(--color-poolActive)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
       )}
-    </AppShell>
+    </div>
   );
 }
 

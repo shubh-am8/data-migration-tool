@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { AppLoader } from "@/components/shared/AppLoader";
 import { ConnectorCard } from "@/components/connectors/ConnectorCard";
 import { DocLink } from "@/components/shared/DocLink";
@@ -104,7 +104,7 @@ export default function MarketplaceClient() {
 
   return (
     <AppShell>
-      <PageHeader
+      <SetPageChrome
         title="Connector Marketplace"
         description="Install bundled or custom connector JARs, then create connections"
         action={

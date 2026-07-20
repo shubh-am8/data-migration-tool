@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { JobProgressCard } from "@/components/jobs/JobProgressCard";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
@@ -30,7 +30,9 @@ export default function JobDetailPage() {
 
   return (
     <AppShell>
-      <PageHeader title={(status?.name as string) || "Job"} description={`Status: ${status?.status || "—"}`}
+      <SetPageChrome
+        title={(status?.name as string) || "Job"}
+        description={`Status: ${status?.status || "—"}`}
         action={
           <div className="flex gap-2">
             <Button onClick={() => cmd("start")}>Start</Button>
@@ -38,7 +40,8 @@ export default function JobDetailPage() {
             <Button variant="outline" onClick={() => cmd("resume")}>Resume</Button>
             <Button variant="destructive" onClick={() => cmd("cancel")}>Cancel</Button>
           </div>
-        } />
+        }
+      />
       {status && <JobProgressCard status={status} />}
     </AppShell>
   );

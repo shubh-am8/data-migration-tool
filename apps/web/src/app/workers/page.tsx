@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import type { PageResponse } from "@/components/shared/PaginationBar";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ export default function WorkersPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Workers" description="Live worker and thread status" />
+      <SetPageChrome title="Workers" description="Live worker and thread status" />
       <DataTable
         columns={columns}
         rows={data?.content ?? []}

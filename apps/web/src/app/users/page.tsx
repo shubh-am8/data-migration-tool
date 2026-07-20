@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { EmailConfirmDialog } from "@/components/shared/EmailConfirmDialog";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import type { PageResponse } from "@/components/shared/PaginationBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -157,7 +157,7 @@ export default function UsersPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Users" description="Domain admins can revoke sessions or delete users" />
+      <SetPageChrome title="Users" description="Domain admins can revoke sessions or delete users" />
       <DataTable
         columns={columns}
         rows={data?.content ?? []}

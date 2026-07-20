@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { useRefreshToken, useSetPageChrome } from "@/components/layout/PageChromeContext";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { LocalClock } from "@/components/dashboard/LocalClock";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { AppLoader } from "@/components/shared/AppLoader";
 import { apiFetch } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
@@ -47,11 +46,22 @@ function mapSamples(samples?: Stats["samples"]) {
 }
 
 export default function DashboardPage() {
+  return (
+    <AppShell>
+      <DashboardBody />
+    </AppShell>
+  );
+}
+
+function DashboardBody() {
+  useSetPageChrome({ title: "Dashboard", description: "Overview of migrations, connections, and workers" });
+  const refreshToken = useRefreshToken();
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [jobs, setJobs] = useState<Array<{ id: string; name: string; status: string }>>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true);
     Promise.all([
       apiFetch<Stats>("/api/dashboard/stats"),
@@ -70,82 +80,74 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  return (
-    <AppShell>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader title="Dashboard" description="Overview of migrations, connections, and workers" />
-        <div className="rounded-lg border bg-muted/30 px-4 py-2 text-right">
-          <p className="text-xs text-muted-foreground">Local time</p>
-          <LocalClock className="font-mono text-2xl font-semibold tracking-tight" />
-        </div>
+  useEffect(() => {
+    load();
+  }, [load, refreshToken]);
+
+  return loading && !stats ? (
+    <AppLoader />
+  ) : (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Active Jobs" value={stats?.activeJobs ?? "—"} />
+        <StatCard title="Connections" value={stats?.totalConnections ?? "—"} />
+        <StatCard title="Workers Online" value={stats?.workersOnline ?? "—"} />
+        <StatCard title="Failed Jobs" value={stats?.failedJobs24h ?? "—"} />
+        <StatCard title="Registered Users" value={stats?.registeredUsers ?? "—"} />
+        <StatCard title="Online Users" value={stats?.onlineUsers ?? "—"} />
+        <StatCard title="Worker Threads" value={stats?.workerThreads ?? "—"} />
+        <StatCard
+          title="App DB Pool"
+          value={
+            stats?.appDbPoolActive != null
+              ? `${stats.appDbPoolActive}/${stats.appDbPoolMax ?? "—"}`
+              : "—"
+          }
+        />
+        <StatCard
+          title="API CPU"
+          value={stats?.apiCpu != null ? `${(stats.apiCpu * 100).toFixed(1)}%` : "—"}
+        />
+        <StatCard
+          title="API Memory"
+          value={stats?.apiMemUsedMb != null ? `${Math.round(stats.apiMemUsedMb)} MB` : "—"}
+        />
       </div>
 
-      {loading && !stats ? (
-        <AppLoader />
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Active Jobs" value={stats?.activeJobs ?? "—"} />
-            <StatCard title="Connections" value={stats?.totalConnections ?? "—"} />
-            <StatCard title="Workers Online" value={stats?.workersOnline ?? "—"} />
-            <StatCard title="Failed Jobs" value={stats?.failedJobs24h ?? "—"} />
-            <StatCard title="Registered Users" value={stats?.registeredUsers ?? "—"} />
-            <StatCard title="Online Users" value={stats?.onlineUsers ?? "—"} />
-            <StatCard title="Worker Threads" value={stats?.workerThreads ?? "—"} />
-            <StatCard
-              title="App DB Pool"
-              value={
-                stats?.appDbPoolActive != null
-                  ? `${stats.appDbPoolActive}/${stats.appDbPoolMax ?? "—"}`
-                  : "—"
-              }
-            />
-            <StatCard
-              title="API CPU"
-              value={stats?.apiCpu != null ? `${(stats.apiCpu * 100).toFixed(1)}%` : "—"}
-            />
-            <StatCard
-              title="API Memory"
-              value={stats?.apiMemUsedMb != null ? `${Math.round(stats.apiMemUsedMb)} MB` : "—"}
-            />
-          </div>
-
-          {(stats?.samples?.length ?? 0) > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>API load (recent)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-56 w-full">
-                  <LineChart data={mapSamples(stats!.samples)}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis dataKey="t" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="cpu" stroke="var(--color-cpu)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="memMb" stroke="var(--color-memMb)" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Jobs</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              {jobs.slice(0, 5).map((job) => (
-                <div key={job.id} className="flex items-center justify-between rounded-md border p-3">
-                  <span className="font-medium">{job.name}</span>
-                  <span className="text-sm text-muted-foreground">{job.status}</span>
-                </div>
-              ))}
-              {jobs.length === 0 && <p className="text-sm text-muted-foreground">No jobs yet</p>}
-            </CardContent>
-          </Card>
-        </>
+      {(stats?.samples?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>API load (recent)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-56 w-full">
+              <LineChart data={mapSamples(stats!.samples)}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="t" tickLine={false} axisLine={false} />
+                <YAxis tickLine={false} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="cpu" stroke="var(--color-cpu)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="memMb" stroke="var(--color-memMb)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
       )}
-    </AppShell>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Jobs</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {jobs.slice(0, 5).map((job) => (
+            <div key={job.id} className="flex items-center justify-between rounded-md border p-3">
+              <span className="font-medium">{job.name}</span>
+              <span className="text-sm text-muted-foreground">{job.status}</span>
+            </div>
+          ))}
+          {jobs.length === 0 && <p className="text-sm text-muted-foreground">No jobs yet</p>}
+        </CardContent>
+      </Card>
+    </>
   );
 }

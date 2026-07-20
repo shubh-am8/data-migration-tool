@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import type { PageResponse } from "@/components/shared/PaginationBar";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,7 @@ export default function JobsPage() {
 
   return (
     <AppShell>
-      <PageHeader
+      <SetPageChrome
         title="Jobs"
         description="Data migration jobs"
         action={
