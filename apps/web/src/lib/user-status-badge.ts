@@ -1,5 +1,5 @@
-export function presenceBadgeVariant(online: boolean): "success" | "destructive" {
-  return online ? "success" : "destructive";
+export function presenceBadgeVariant(online: boolean): "success" | "danger" {
+  return online ? "success" : "danger";
 }
 
 export function revokedBadgeVariant(): "warning" {

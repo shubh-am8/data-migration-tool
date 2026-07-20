@@ -5,8 +5,8 @@ describe("user status badge variants", () => {
     expect(presenceBadgeVariant(true)).toBe("success");
   });
 
-  it("maps offline to destructive (red)", () => {
-    expect(presenceBadgeVariant(false)).toBe("destructive");
+  it("maps offline to danger (solid red)", () => {
+    expect(presenceBadgeVariant(false)).toBe("danger");
   });
 
   it("maps revoked to warning (yellow)", () => {
