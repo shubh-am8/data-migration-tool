@@ -15,6 +15,7 @@ export const NAV_ITEMS = [
   { href: "/infra", label: "Infra" },
   { href: "/users", label: "Users", adminOnly: true },
   { href: "/connectors/marketplace", label: "Marketplace" },
+  { href: "/docs", label: "Docs" },
   { href: "/connections", label: "Connections" },
   { href: "/jobs", label: "Jobs" },
   { href: "/workers", label: "Workers" },

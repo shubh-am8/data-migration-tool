@@ -1,17 +1,49 @@
 import path from "path";
 
 export const DOC_REGISTRY: Record<string, { title: string; relativePath: string }> = {
-  "adding-a-connector": {
-    title: "Adding a Connector",
-    relativePath: "connectors/adding-a-connector.md",
+  architecture: {
+    title: "Architecture",
+    relativePath: "architecture.md",
+  },
+  development: {
+    title: "Development",
+    relativePath: "development.md",
+  },
+  deployment: {
+    title: "Deployment",
+    relativePath: "deployment.md",
+  },
+  configuration: {
+    title: "Configuration",
+    relativePath: "configuration.md",
+  },
+  marketplace: {
+    title: "Marketplace",
+    relativePath: "marketplace.md",
   },
   "connectors-overview": {
     title: "Connectors Overview",
     relativePath: "connectors/README.md",
   },
-  marketplace: {
-    title: "Marketplace",
-    relativePath: "marketplace.md",
+  "adding-a-connector": {
+    title: "Adding a Connector",
+    relativePath: "connectors/adding-a-connector.md",
+  },
+  api: {
+    title: "API Service",
+    relativePath: "components/api.md",
+  },
+  worker: {
+    title: "Worker Service",
+    relativePath: "components/worker.md",
+  },
+  frontend: {
+    title: "Frontend",
+    relativePath: "components/frontend.md",
+  },
+  "connector-sdk": {
+    title: "Connector SDK",
+    relativePath: "components/connector-sdk.md",
   },
 };
 
