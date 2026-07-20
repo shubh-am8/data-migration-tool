@@ -10,6 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { DocsNav } from "@/components/docs/DocsNav";
+import { ComponentErrorBoundary } from "@/components/shared/ComponentErrorBoundary";
 
 export function DocsShell({
   children,
@@ -46,7 +47,11 @@ export function DocsShell({
         {navPanel}
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-6 pt-4 md:pt-0">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-6 pt-4 md:pt-0">
+        <ComponentErrorBoundary fallbackTitle="Could not load this page">
+          {children}
+        </ComponentErrorBoundary>
+      </div>
     </div>
   );
 }
