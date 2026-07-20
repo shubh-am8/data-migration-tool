@@ -7,21 +7,11 @@ import { shellAsideClass } from "@/lib/shell-layout";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { UserMenu, type ShellUser } from "@/components/layout/UserMenu";
+import { visibleNavSections } from "@/lib/nav-sections";
 import { useState } from "react";
-
-export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/infra", label: "Infra" },
-  { href: "/users", label: "Users", adminOnly: true },
-  { href: "/connectors/marketplace", label: "Marketplace" },
-  { href: "/docs", label: "Docs" },
-  { href: "/connections", label: "Connections" },
-  { href: "/jobs", label: "Jobs" },
-  { href: "/workers", label: "Workers" },
-  { href: "/settings", label: "Settings" },
-] as const;
 
 function NavLinks({
   pathname,
@@ -32,20 +22,29 @@ function NavLinks({
   admin: boolean;
   onNavigate?: () => void;
 }) {
+  const sections = visibleNavSections(admin);
   return (
-    <nav className="flex flex-col gap-1">
-      {NAV_ITEMS.filter((item) => !("adminOnly" in item && item.adminOnly) || admin).map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          onClick={onNavigate}
-          className={cn(
-            "rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted",
-            pathname.startsWith(item.href) && "bg-muted font-medium"
-          )}
-        >
-          {item.label}
-        </Link>
+    <nav className="flex flex-col gap-4" aria-label="Main">
+      {sections.map((section, index) => (
+        <div key={section.id} className="flex flex-col gap-1">
+          {index > 0 ? <Separator className="mb-1" /> : null}
+          <p className="px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {section.label}
+          </p>
+          {section.items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                "rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted",
+                pathname.startsWith(item.href) && "bg-muted font-medium"
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
       ))}
     </nav>
   );
