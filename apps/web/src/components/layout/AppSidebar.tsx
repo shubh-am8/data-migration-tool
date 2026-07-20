@@ -13,8 +13,6 @@ import { UserMenu, type ShellUser } from "@/components/layout/UserMenu";
 import { visibleNavSections } from "@/lib/nav-sections";
 import { useState } from "react";
 
-export { NAV_ITEMS } from "@/lib/nav-sections";
-
 function NavLinks({
   pathname,
   admin,
