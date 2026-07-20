@@ -6,6 +6,7 @@ import com.migration.connectors.ConnectionController;
 import com.migration.connectors.ConnectionRepository;
 import com.migration.connectors.ConnectionService;
 import com.migration.connectors.ConnectorPluginRegistry;
+import com.migration.connectors.ConnectorPluginRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -44,6 +45,9 @@ class SecurityConfigTest {
 
     @MockBean
     ConnectionRepository connectionRepository;
+
+    @MockBean
+    ConnectorPluginRepository connectorPluginRepository;
 
     @MockBean
     AppConfigService appConfigService;
