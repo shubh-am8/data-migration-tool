@@ -1,0 +1,23 @@
+{
+  "repo": "OWNER/data-migration-tool",
+  "items": [
+    {
+      "id": "postgresql",
+      "kind": "CONNECTOR",
+      "name": "PostgreSQL",
+      "description": "Connect to PostgreSQL for schema introspection and data transfer.",
+      "version": "0.1.0",
+      "asset": "postgresql-connector-0.1.0.jar",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "id": "lab-devtools",
+      "kind": "TOOL",
+      "name": "Lab Dev Tools",
+      "description": "Dev playground: lab schemas, sample tables, and TEST-mode simulation jobs.",
+      "version": "0.1.0",
+      "asset": "lab-devtools-0.1.0.zip",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}

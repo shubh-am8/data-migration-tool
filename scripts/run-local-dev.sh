@@ -47,13 +47,9 @@ parse_args() {
 
 build_backend() {
   echo "Building backend modules..."
-  (cd "${ROOT_DIR}" && mvn -q -pl services/api,services/worker,connectors/postgresql -am install -DskipTests)
+  (cd "${ROOT_DIR}" && mvn -q -pl services/api,services/worker -am install -DskipTests)
   mkdir -p "${ROOT_DIR}/data/plugins/bundled" "${ROOT_DIR}/data/plugins/installed"
-  PG_JAR="${ROOT_DIR}/connectors/postgresql/target/postgresql-connector-0.1.0-SNAPSHOT.jar"
-  if [[ -f "${PG_JAR}" ]]; then
-    cp -f "${PG_JAR}" "${ROOT_DIR}/data/plugins/bundled/postgresql.jar"
-    echo "Seeded data/plugins/bundled/postgresql.jar"
-  fi
+  # Connectors install via Marketplace (remote or local dist) — do not seed bundled/
 }
 
 prepare_dev_stack() {

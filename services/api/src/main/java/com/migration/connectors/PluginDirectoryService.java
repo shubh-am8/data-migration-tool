@@ -87,32 +87,23 @@ public class PluginDirectoryService {
     }
 
     /**
-     * Seeds bundled/postgresql.jar on first boot. Checked locations cover both dev (Maven
-     * reactor build output, any version) and the packaged Docker image (baked seed dir —
-     * see services/api/Dockerfile, services/worker/Dockerfile, infra/Dockerfile).
+     * Optional bundled/postgresql.jar seed, checked only at {@code /app/plugins-seed} (a
+     * manually mounted volume, if present). The main build no longer produces this JAR or bakes
+     * it into the Docker image — connectors now live in {@code marketplace/} and install via the
+     * Marketplace (remote GitHub Releases or local dist), not via this Maven-target auto-seed.
      */
     private void ensureBundledPostgresql() {
         Path dest = bundled.resolve("postgresql.jar");
         if (Files.isRegularFile(dest)) return;
-        Path[] searchDirs = {
-            Path.of("connectors/postgresql/target"),
-            Path.of("../connectors/postgresql/target"),
-            Path.of("../../connectors/postgresql/target"),
-            Path.of("/app/plugins-seed"),
-        };
-        for (Path dir : searchDirs) {
-            Path found = findConnectorJar(dir);
-            if (found != null) {
-                try {
-                    Files.copy(found, dest, StandardCopyOption.REPLACE_EXISTING);
-                    log.info("Seeded bundled postgresql.jar from {}", found.toAbsolutePath());
-                    return;
-                } catch (IOException e) {
-                    log.warn("Could not seed bundled postgresql.jar: {}", e.getMessage());
-                }
+        Path found = findConnectorJar(Path.of("/app/plugins-seed"));
+        if (found != null) {
+            try {
+                Files.copy(found, dest, StandardCopyOption.REPLACE_EXISTING);
+                log.info("Seeded bundled postgresql.jar from {}", found.toAbsolutePath());
+            } catch (IOException e) {
+                log.warn("Could not seed bundled postgresql.jar: {}", e.getMessage());
             }
         }
-        log.warn("bundled/postgresql.jar missing — build connectors/postgresql and restart, or place the JAR manually");
     }
 
     /** First non `-sources`/`-javadoc` postgresql-connector-*.jar (or postgresql.jar) in dir, else null. */

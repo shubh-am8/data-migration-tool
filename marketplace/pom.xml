@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.migration</groupId>
+    <artifactId>marketplace</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Marketplace Assets</name>
+
+    <!--
+      Not a module of the root reactor: main build (services/api, services/worker) must not
+      ship connector JARs. Build marketplace assets for release with:
+        mvn -f marketplace/pom.xml -pl connectors/postgresql -am package -DskipTests
+      Requires packages/connector-sdk already installed to the local repo (root reactor install).
+    -->
+    <modules>
+        <module>connectors/postgresql</module>
+    </modules>
+</project>
