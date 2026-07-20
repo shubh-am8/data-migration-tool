@@ -18,7 +18,19 @@ export default function ConnectionsPage() {
   const [size, setSize] = useState(20);
   const [data, setData] = useState<PageResponse<ConnectionRow> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasInstalledConnector, setHasInstalledConnector] = useState<boolean | null>(null);
   const [pluginFilter, setPluginFilter] = useState<string>("all");
+
+  useEffect(() => {
+    apiFetch<{ id: string; installed?: boolean; enabled?: boolean }[]>("/api/marketplace")
+      .then((list) => {
+        setHasInstalledConnector(list.some((p) => p.installed ?? p.enabled));
+      })
+      .catch((e: Error) => {
+        notify.error("Failed to load connectors", e.message);
+        setHasInstalledConnector(false);
+      });
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -124,14 +136,26 @@ export default function ConnectionsPage() {
         rowKey={(c) => c.id}
         loading={loading}
         empty={
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-sm text-muted-foreground">No connections yet.</p>
-            <Link href="/connectors/marketplace">
-              <Button variant="outline" size="sm">
-                Install a connector first
-              </Button>
-            </Link>
-          </div>
+          !loading && (data?.totalElements ?? 0) === 0 ? (
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-sm text-muted-foreground">No connections yet.</p>
+              {hasInstalledConnector ? (
+                <Link href="/connections/new">
+                  <Button variant="outline" size="sm">
+                    Add a connection
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/connectors/marketplace">
+                  <Button variant="outline" size="sm">
+                    Install a connector first
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : pluginFilter !== "all" ? (
+            <p className="text-sm text-muted-foreground">No connections match this filter.</p>
+          ) : undefined
         }
         page={page}
         size={size}
