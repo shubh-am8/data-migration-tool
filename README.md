@@ -1,5 +1,7 @@
 # Data Migration Platform
 
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 Enterprise data migration platform with a Next.js dashboard, Spring Boot API/worker, and pluggable database connectors.
 
 ## Quick Start
@@ -10,6 +12,21 @@ cp .env.example .env
 ```
 
 Open http://localhost:3000
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser --> Caddy
+  Caddy --> API[Spring Boot API]
+  Caddy --> Web[Next.js]
+  API --> PG[(PostgreSQL)]
+  API --> Redis[(Redis)]
+  Worker --> PG
+  Worker --> Redis
+```
+
+Full diagram: [docs/architecture.md](docs/architecture.md)
 
 ## Documentation
 
@@ -45,6 +62,10 @@ scripts/            run-local-dev.sh, entrypoint
 docs/               Documentation
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: [SECURITY.md](SECURITY.md).
+
 ## License
 
-Proprietary — internal use.
+Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE) for attribution.

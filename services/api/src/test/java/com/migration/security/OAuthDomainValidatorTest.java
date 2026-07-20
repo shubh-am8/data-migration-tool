@@ -57,7 +57,7 @@ class OAuthDomainValidatorTest {
     @Test
     void domainValidatorUsesLatestConfigValue() {
         AppConfigService cfg = mock(AppConfigService.class);
-        when(cfg.get("allowed_email_domain")).thenReturn("chatbot.team");
+        when(cfg.get("allowed_email_domain")).thenReturn("example.com");
         OAuthDomainValidator v = new OAuthDomainValidator(cfg);
         OAuth2User user = mock(OAuth2User.class);
         when(user.getAttribute("email")).thenReturn("a@other.com");

@@ -111,7 +111,7 @@ describe("ConfigEditor", () => {
             restartRequired: false,
           },
           allowed_email_domain: {
-            value: "chatbot.team",
+            value: "example.com",
             source: "ENV",
             sensitive: false,
             masked: false,

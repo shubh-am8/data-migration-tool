@@ -50,7 +50,7 @@ class AppConfigBootstrapTest {
     void bootstrapSeedsMissingCatalogKeysWithoutOverwritingDashboard() {
         var env = new StubEnv(Map.of(
             "GOOGLE_CLIENT_SECRET", "env-secret",
-            "ALLOWED_EMAIL_DOMAIN", "chatbot.team"
+            "ALLOWED_EMAIL_DOMAIN", "example.com"
         ));
         var bootstrap = new AppConfigBootstrap(repository, env, false);
 
@@ -65,7 +65,7 @@ class AppConfigBootstrapTest {
         bootstrap.run(new org.springframework.boot.DefaultApplicationArguments(new String[0]));
 
         verify(repository, never()).save(argThat(e -> 
-            "allowed_email_domain".equals(e.getKey()) && "chatbot.team".equals(e.getValue())
+            "allowed_email_domain".equals(e.getKey()) && "example.com".equals(e.getValue())
         ));
         verify(repository).save(argThat(e -> 
             "google_client_secret".equals(e.getKey()) && "env-secret".equals(e.getValue())

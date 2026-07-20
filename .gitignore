@@ -9,6 +9,8 @@ target/
 .env
 .env.local
 .env.*.local
+.env.production
+*.pem
 
 # IDE
 .idea/
