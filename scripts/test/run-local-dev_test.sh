@@ -35,7 +35,7 @@ grep -q 'prepare_dev_stack "${MODE}"' "${ROOT}/scripts/run-local-dev.sh" || fail
 grep -q 'stop_infra' "${ROOT}/scripts/run-local-dev.sh" || fail "prepare must stop infra for backend/all"
 pass "prepare_dev_stack wired in main flow"
 
-grep -A5 'frontend)' "${ROOT}/scripts/run-local-dev.sh" | grep -q 'wait' || fail "frontend mode must wait for dev server"
+grep -A8 'case "${MODE}"' "${ROOT}/scripts/run-local-dev.sh" | grep -q 'wait' || fail "frontend mode must wait for dev server"
 pass "frontend mode waits for dev server"
 
 if ! grep -q 'kill -9' "${ROOT}/scripts/lib/common.sh"; then
