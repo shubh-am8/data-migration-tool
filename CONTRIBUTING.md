@@ -21,6 +21,18 @@ For auth-free local API access, set `AUTH_ENFORCED=false` in `.env`. See
 [docs/development.md](docs/development.md) for script flags, ports, and
 troubleshooting.
 
+## Branching
+
+- Do not commit directly to `main` or `master`.
+- Branch naming: `feat/<short-name>`, `fix/<short-name>`, `docs/<short-name>`.
+- Open a PR into `main`; wait for green CI before merge (squash or merge commit
+  per repo default).
+- Never force-push `main`; force-push feature branches only when explicitly
+  requested.
+- Do not commit `.env`, `.pnpm-store/`, secrets, or `docs/superpowers/` agent
+  scratch.
+- Prefer one logical change per PR.
+
 ## Pull request checklist
 
 - [ ] Changes build and tests pass (`mvn test`, `cd apps/web && npm test`)
