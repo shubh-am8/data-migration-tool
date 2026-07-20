@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/components/layout/AppSidebar";
+import { NAV_ITEMS } from "@/lib/nav-sections";
 import { usePageChrome } from "@/components/layout/PageChromeContext";
 import { LocalClock } from "@/components/dashboard/LocalClock";
 import { AutoRefreshControl, useAutoRefresh } from "@/components/shared/AutoRefreshControl";
