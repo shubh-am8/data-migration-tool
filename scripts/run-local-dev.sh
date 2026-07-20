@@ -115,6 +115,9 @@ start_worker() {
 
 start_frontend() {
   echo "Starting Frontend (port 3000)..."
+  # ponytail: Turbopack HMR can leave stale chunk factories ("module factory is not available").
+  # Ceiling: cold compile every restart. Upgrade: only wipe when NEXT_CLEAN=1 or a --clean flag.
+  rm -rf "${ROOT_DIR}/apps/web/.next"
   (cd "${ROOT_DIR}/apps/web" && npm run dev) &
   record_pid $!
   wait_for_port localhost 3000 60 || { echo "Frontend failed to start on :3000"; exit 1; }
