@@ -34,4 +34,4 @@ Actuator: `health`, `info`, `metrics` on `:8081` (fetched by API via `WORKER_MET
 | `ENCRYPTION_KEY` | required | Must match API for decrypt |
 | `GSPACE_WEBHOOK_URL` | | Worker lifecycle notifications |
 
-[Back to Documentation Index](../README.md) | [Project README](../../README.md)
+[Back to Documentation Index](../README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

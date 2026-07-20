@@ -43,4 +43,4 @@ Restart API. Overwrites editable DB config keys from env.
 2. Dashboard `gspace_webhook_url` (DB)
 3. Env `GSPACE_WEBHOOK_URL`
 
-[Back to Documentation Index](README.md) | [Project README](../README.md)
+[Back to Documentation Index](README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

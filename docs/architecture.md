@@ -76,4 +76,4 @@ sequenceDiagram
 - **DB-backed config:** Thread limits, GSpace URL, batch size
 - **Dashboard edits** persist in `app_config` with `source=DASHBOARD`
 
-[Back to Documentation Index](README.md) | [Project README](../README.md)
+[Back to Documentation Index](README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

@@ -28,4 +28,4 @@ Spring Boot REST API on port 8080.
 
 Flyway migrations in `src/main/resources/db/migration/`.
 
-[Back to Documentation Index](../README.md) | [Project README](../../README.md)
+[Back to Documentation Index](../README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

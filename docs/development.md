@@ -76,4 +76,4 @@ cd apps/web && npm run build
 - **API/Worker won't start:** Run `./run-local-dev.sh` from repo root — the script builds modules then starts each service from `services/api` and `services/worker` (root `mvn spring-boot:run` fails on the aggregator POM)
 - **API won't start:** Ensure Postgres is healthy: `docker compose -f infra/docker-compose.dev.yml ps`
 
-[Back to Documentation Index](README.md) | [Project README](../README.md)
+[Back to Documentation Index](README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

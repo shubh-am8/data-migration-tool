@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -43,11 +44,19 @@ const markdownComponents = {
   },
   a: ({ children, href }: React.ComponentProps<"a">) => {
     const resolved = hrefToDocSlug(href);
+    const className = "text-primary underline underline-offset-4 hover:opacity-80";
+    if (resolved?.startsWith("/docs")) {
+      return (
+        <Link href={resolved} className={className}>
+          {children}
+        </Link>
+      );
+    }
     const external = resolved?.startsWith("http");
     return (
       <a
         href={resolved}
-        className="text-primary underline underline-offset-4 hover:opacity-80"
+        className={className}
         target={external ? "_blank" : undefined}
         rel={external ? "noopener noreferrer" : undefined}
       >
