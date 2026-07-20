@@ -58,12 +58,12 @@ export function HttpStatusChart({ samples }: HttpStatusChartProps) {
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>HTTP status</CardTitle>
         <ToggleGroup
-          type="single"
           variant="outline"
           size="sm"
-          value={filter}
+          value={[filter]}
           onValueChange={(value) => {
-            if (value) setFilter(value as HttpStatusFilter);
+            const next = value[0];
+            if (next) setFilter(next as HttpStatusFilter);
           }}
         >
           {FILTERS.map((f) => (
