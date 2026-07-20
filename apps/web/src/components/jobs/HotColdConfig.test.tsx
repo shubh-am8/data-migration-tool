@@ -36,7 +36,7 @@ describe("HotColdConfig", () => {
         onChange={jest.fn()}
       />
     );
-    expect(screen.getByText("Timestamp column")).toBeInTheDocument();
+    expect(screen.getByText("Timestamp column *")).toBeInTheDocument();
     expect(screen.queryByText("Hot window (days)")).not.toBeInTheDocument();
   });
 });

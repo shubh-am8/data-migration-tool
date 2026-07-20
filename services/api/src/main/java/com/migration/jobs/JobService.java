@@ -201,15 +201,18 @@ public class JobService {
         alertConfigRepository.save(alert);
     }
 
-    private void validateJob(JobEntity job, Map<String, Object> body) {
+    void validateJob(JobEntity job, Map<String, Object> body) {
         int min = Integer.parseInt(appConfigService.get("min_threads_per_job"));
         int max = Integer.parseInt(appConfigService.get("max_threads_per_job"));
         if (job.getThreadCount() < min || job.getThreadCount() > max) {
             throw new IllegalArgumentException("thread_count must be between " + min + " and " + max);
         }
+        if (job.getTsColumn() == null || job.getTsColumn().isBlank()) {
+            throw new IllegalArgumentException("ts_column is required for time-chunked migrations");
+        }
         if ((job.getMigrationMode() == MigrationMode.HOT_ONLY || job.getMigrationMode() == MigrationMode.HOT_THEN_COLD)
-            && (job.getTsColumn() == null || job.getHotDays() == null)) {
-            throw new IllegalArgumentException("hot migration requires ts_column and hot_days");
+            && job.getHotDays() == null) {
+            throw new IllegalArgumentException("hot migration requires hot_days");
         }
         if (job.getConflictColumns() == null || job.getConflictColumns().isEmpty()) {
             throw new IllegalArgumentException("conflict_columns required");

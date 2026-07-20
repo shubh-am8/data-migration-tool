@@ -99,8 +99,8 @@ export function HotColdConfig({
         </Field>
       )}
       <Field>
-        <FieldLabel>Timestamp column</FieldLabel>
-        <Input value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
+        <FieldLabel>Timestamp column *</FieldLabel>
+        <Input required value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
       </Field>
       <Field>
         <FieldLabel>Min chunk duration (hours)</FieldLabel>

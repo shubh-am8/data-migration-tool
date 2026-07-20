@@ -16,7 +16,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.time.Instant;
@@ -75,7 +74,10 @@ public class JobQueueConsumer {
         }
     }
 
-    @Transactional
+    // ponytail: no single long @Transactional here on purpose - each repository
+    // save below auto-commits in its own transaction (Spring Data JPA default),
+    // so status/progress becomes visible to readers as soon as each phase/step
+    // finishes instead of only at the very end of the job.
     void processJob(UUID jobId) throws Exception {
         JobEntity job = jobRepository.findById(jobId).orElseThrow();
         job.setStatus(JobStatus.RUNNING);
@@ -96,6 +98,7 @@ public class JobQueueConsumer {
         };
 
         var results = hotColdManager.runJob(job, sourceConfig, destConfig, phases, checker);
+        phaseRepository.saveAll(phases);
 
         for (var result : results) {
             var recon = reconciliationService.reconcile(

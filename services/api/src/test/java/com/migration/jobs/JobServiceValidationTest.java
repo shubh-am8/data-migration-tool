@@ -1,10 +1,15 @@
 package com.migration.jobs;
 
+import com.migration.config.AppConfigService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JobServiceValidationTest {
 
@@ -76,5 +81,56 @@ class JobServiceValidationTest {
         job.setMinChunkDurationHours(24);
         job.setMaxChunkDurationHours(168);
         assertDoesNotThrow(() -> JobService.validateRangeChunks(job));
+    }
+
+    @Test
+    void rejectsColdOnlyWithNullTsColumn() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        job.setMigrationMode(MigrationMode.COLD_ONLY);
+        job.setTsColumn(null);
+        job.setRangeStart(Instant.parse("2024-01-01T00:00:00Z"));
+        job.setConflictColumns(List.of("id"));
+        assertThrows(IllegalArgumentException.class, () -> service.validateJob(job, Map.of()));
+    }
+
+    @Test
+    void rejectsColdOnlyWithBlankTsColumn() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        job.setMigrationMode(MigrationMode.COLD_ONLY);
+        job.setTsColumn("   ");
+        job.setRangeStart(Instant.parse("2024-01-01T00:00:00Z"));
+        job.setConflictColumns(List.of("id"));
+        assertThrows(IllegalArgumentException.class, () -> service.validateJob(job, Map.of()));
+    }
+
+    @Test
+    void rejectsHotOnlyWithBlankTsColumn() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        job.setMigrationMode(MigrationMode.HOT_ONLY);
+        job.setTsColumn("");
+        job.setHotDays(7);
+        job.setConflictColumns(List.of("id"));
+        assertThrows(IllegalArgumentException.class, () -> service.validateJob(job, Map.of()));
+    }
+
+    @Test
+    void acceptsHotOnlyWithNonBlankTsColumn() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        job.setMigrationMode(MigrationMode.HOT_ONLY);
+        job.setTsColumn("created_at");
+        job.setHotDays(7);
+        job.setConflictColumns(List.of("id"));
+        assertDoesNotThrow(() -> service.validateJob(job, Map.of()));
+    }
+
+    private static JobService newServiceWithThreadBounds() {
+        AppConfigService appConfigService = mock(AppConfigService.class);
+        when(appConfigService.get("min_threads_per_job")).thenReturn("1");
+        when(appConfigService.get("max_threads_per_job")).thenReturn("16");
+        return new JobService(null, null, null, null, null, null, appConfigService, null, null);
     }
 }
