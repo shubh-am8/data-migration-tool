@@ -14,21 +14,37 @@ test("unknown slug returns null", () => {
   expect(resolveDocPath("../../../etc/passwd")).toBeNull();
 });
 
+const OSS_DOC_SLUGS = [
+  "architecture",
+  "development",
+  "deployment",
+  "configuration",
+  "marketplace",
+  "connectors-overview",
+  "adding-a-connector",
+  "api",
+  "worker",
+  "frontend",
+  "connector-sdk",
+] as const;
+
 test("registry includes expanded doc slugs", () => {
-  for (const slug of [
-    "architecture",
-    "development",
-    "deployment",
-    "configuration",
-    "marketplace",
-    "connectors-overview",
-    "adding-a-connector",
-    "api",
-    "worker",
-    "frontend",
-    "connector-sdk",
-  ]) {
+  for (const slug of OSS_DOC_SLUGS) {
     expect(DOC_REGISTRY[slug]).toBeDefined();
   }
-  expect(listDocSlugs()).toHaveLength(11);
+  expect(listDocSlugs()).toHaveLength(OSS_DOC_SLUGS.length);
+});
+
+test("every allowlisted slug resolves under docs/", () => {
+  for (const slug of OSS_DOC_SLUGS) {
+    const p = resolveDocPath(slug);
+    expect(p).not.toBeNull();
+    expect(p!.replace(/\\/g, "/")).toMatch(/\/docs\/.+\.md$/);
+  }
+});
+
+test("path traversal slugs return null", () => {
+  for (const slug of ["../../../etc/passwd", "..%2F..%2Fetc%2Fpasswd", "architecture/../../etc/passwd"]) {
+    expect(resolveDocPath(slug)).toBeNull();
+  }
 });

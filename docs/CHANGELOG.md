@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Open-sourced under Apache-2.0 with LICENSE, CONTRIBUTING, SECURITY, and CODE_OF_CONDUCT
+- In-app docs at `/docs/[slug]` with allowlisted registry and Mermaid diagram rendering
+
 ## [0.7.0] - 2026-07-20
 
 ### Added
