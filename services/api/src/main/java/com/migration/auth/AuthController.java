@@ -35,19 +35,37 @@ public class AuthController {
     }
 
     @GetMapping("/oauth2/success")
-    public void oauthSuccess(OAuth2AuthenticationToken auth, HttpServletResponse response) throws IOException {
-        if (auth == null) {
-            response.sendRedirect(frontendUrl + "/login?error=oauth");
+    public void oauthSuccess(Authentication auth, HttpServletResponse response) throws IOException {
+        if (auth instanceof OAuth2AuthenticationToken oauth) {
+            try {
+                UserEntity user = userService.upsertFromOAuth(oauth);
+                String token = jwtService.createToken(user.getId(), user.getEmail(), user.getTokenVersion());
+                response.addHeader(HttpHeaders.SET_COOKIE, authCookie(token, 86400).toString());
+                redirect(response, "/dashboard");
+            } catch (IllegalStateException e) {
+                redirect(response, "/login?error=revoked");
+            } catch (Exception e) {
+                redirect(response, "/login?error=oauth");
+            }
             return;
         }
-        try {
-            UserEntity user = userService.upsertFromOAuth(auth);
-            String token = jwtService.createToken(user.getId(), user.getEmail(), user.getTokenVersion());
-            response.addHeader(HttpHeaders.SET_COOKIE, authCookie(token, 86400).toString());
-            response.sendRedirect(frontendUrl + "/dashboard");
-        } catch (IllegalStateException e) {
-            response.sendRedirect(frontendUrl + "/login?error=revoked");
+        if (auth != null && auth.isAuthenticated()
+                && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)) {
+            redirect(response, "/dashboard");
+            return;
         }
+        redirect(response, "/login?error=oauth");
+    }
+
+    private void redirect(HttpServletResponse response, String path) throws IOException {
+        String location = frontendUrl + path;
+        response.setStatus(HttpServletResponse.SC_FOUND);
+        response.setHeader(HttpHeaders.LOCATION, location);
+        response.setContentType("text/html;charset=UTF-8");
+        response.getWriter().write(
+            "<!DOCTYPE html><html><head><meta http-equiv=\"refresh\" content=\"0;url="
+                + location + "\"></head><body>Redirecting to <a href=\""
+                + location + "\">continue</a>…</body></html>");
     }
 
     @PostMapping("/logout")
