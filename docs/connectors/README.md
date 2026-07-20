@@ -56,4 +56,4 @@ flowchart LR
 
 See [Marketplace](../marketplace.md) for install/upload details and [Adding a Connector](adding-a-connector.md) for a step-by-step guide.
 
-[Back to Documentation Index](README.md) | [Project README](../README.md)
+[Back to Documentation Index](../README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

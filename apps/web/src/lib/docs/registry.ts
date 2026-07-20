@@ -45,7 +45,29 @@ export const DOC_REGISTRY: Record<string, { title: string; relativePath: string 
     title: "Connector SDK",
     relativePath: "components/connector-sdk.md",
   },
+  changelog: {
+    title: "Changelog",
+    relativePath: "CHANGELOG.md",
+  },
 };
+
+export const DOC_NAV = [
+  { id: "getting-started", title: "Getting Started", children: [
+    { slug: "development" }, { slug: "configuration" }, { slug: "deployment" },
+  ]},
+  { id: "architecture", title: "Architecture", children: [
+    { slug: "architecture" },
+  ]},
+  { id: "connectors", title: "Connectors", children: [
+    { slug: "marketplace" }, { slug: "connectors-overview" }, { slug: "adding-a-connector" },
+  ]},
+  { id: "components", title: "Components", children: [
+    { slug: "api" }, { slug: "worker" }, { slug: "frontend" }, { slug: "connector-sdk" },
+  ]},
+  { id: "release", title: "Release", children: [
+    { slug: "changelog" },
+  ]},
+] as const;
 
 /** Repo docs root: monorepo root /docs (Next cwd is apps/web). */
 export function docsRoot(): string {
@@ -66,13 +88,23 @@ export function listDocSlugs(): string[] {
   return Object.keys(DOC_REGISTRY);
 }
 
+/** Strip query/hash and collapse ./ ../ segments for registry matching. */
+function normalizeMarkdownHref(href: string): string {
+  const withoutQuery = href.split(/[?#]/)[0] ?? href;
+  let normalized = path.posix.normalize(withoutQuery.replace(/^\.\//, ""));
+  while (normalized.startsWith("../")) {
+    normalized = normalized.slice(3);
+  }
+  return normalized;
+}
+
 /** Rewrite relative .md hrefs to in-app /docs/{slug} when registered. */
 export function hrefToDocSlug(href: string | undefined): string | undefined {
   if (!href || /^https?:\/\//i.test(href)) return href;
 
-  const normalized = href.replace(/^\.\//, "");
+  const normalized = normalizeMarkdownHref(href);
 
-  if (normalized === "README.md" || normalized === "docs/README.md" || normalized === "../README.md") {
+  if (normalized === "README.md" || normalized === "docs/README.md") {
     return "/docs";
   }
 

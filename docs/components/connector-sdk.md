@@ -27,4 +27,4 @@ Both API (marketplace, test connection) and Worker (batch copy) use ServiceLoade
 
 Jobs support per-table filter specs via `FilterBuilder` UI component. Filters compile to SQL WHERE clauses in connector implementations.
 
-[Back to Documentation Index](../README.md) | [Project README](../../README.md)
+[Back to Documentation Index](../README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

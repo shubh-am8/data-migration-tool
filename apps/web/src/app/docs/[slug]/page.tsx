@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { AppShell } from "@/components/layout/AppShell";
 import { MarkdownDoc } from "@/components/shared/MarkdownDoc";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { loadDoc } from "@/lib/docs/load-doc";
@@ -24,11 +23,9 @@ export default async function DocPage({
   if (!doc) notFound();
 
   return (
-    <AppShell>
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <PageHeader title={doc.title} description="Product documentation" />
-        <MarkdownDoc markdown={doc.markdown} />
-      </div>
-    </AppShell>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <PageHeader title={doc.title} description="Product documentation" />
+      <MarkdownDoc markdown={doc.markdown} />
+    </div>
   );
 }

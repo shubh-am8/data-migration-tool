@@ -1,4 +1,4 @@
-import { DOC_REGISTRY, hrefToDocSlug, listDocSlugs, resolveDocPath } from "./registry";
+import { DOC_NAV, DOC_REGISTRY, hrefToDocSlug, listDocSlugs, resolveDocPath } from "./registry";
 
 test("allowlisted slug resolves under docs/", () => {
   const p = resolveDocPath("adding-a-connector");
@@ -8,6 +8,11 @@ test("allowlisted slug resolves under docs/", () => {
 test("architecture slug resolves under docs/", () => {
   const p = resolveDocPath("architecture");
   expect(p.replace(/\\/g, "/")).toMatch(/docs\/architecture\.md$/);
+});
+
+test("changelog slug resolves under docs/", () => {
+  const p = resolveDocPath("changelog");
+  expect(p.replace(/\\/g, "/")).toMatch(/docs\/CHANGELOG\.md$/);
 });
 
 test("unknown slug returns null", () => {
@@ -26,6 +31,7 @@ const OSS_DOC_SLUGS = [
   "worker",
   "frontend",
   "connector-sdk",
+  "changelog",
 ] as const;
 
 test("registry includes expanded doc slugs", () => {
@@ -33,6 +39,14 @@ test("registry includes expanded doc slugs", () => {
     expect(DOC_REGISTRY[slug]).toBeDefined();
   }
   expect(listDocSlugs()).toHaveLength(OSS_DOC_SLUGS.length);
+});
+
+test("every DOC_NAV child slug exists in DOC_REGISTRY", () => {
+  for (const section of DOC_NAV) {
+    for (const child of section.children) {
+      expect(DOC_REGISTRY[child.slug]).toBeDefined();
+    }
+  }
 });
 
 test("every allowlisted slug resolves under docs/", () => {
@@ -56,7 +70,11 @@ test("hrefToDocSlug rewrites registered markdown links", () => {
   expect(hrefToDocSlug("../marketplace.md")).toBe("/docs/marketplace");
   expect(hrefToDocSlug("README.md")).toBe("/docs");
   expect(hrefToDocSlug("../README.md")).toBe("/docs");
+  expect(hrefToDocSlug("../../README.md")).toBe("/docs");
+  expect(hrefToDocSlug("docs/README.md")).toBe("/docs");
   expect(hrefToDocSlug("connectors/README.md")).toBe("/docs/connectors-overview");
+  expect(hrefToDocSlug("CHANGELOG.md")).toBe("/docs/changelog");
+  expect(hrefToDocSlug("../CHANGELOG.md")).toBe("/docs/changelog");
+  expect(hrefToDocSlug("CHANGELOG.md#v1.0")).toBe("/docs/changelog");
   expect(hrefToDocSlug("https://example.com/foo")).toBe("https://example.com/foo");
-  expect(hrefToDocSlug("CHANGELOG.md")).toBe("CHANGELOG.md");
 });

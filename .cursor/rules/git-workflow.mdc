@@ -1,0 +1,33 @@
+---
+description: Hard rules for feature branches, PRs, and merges into main
+alwaysApply: true
+---
+
+# Git workflow
+
+Hard rules for branches, PRs, and merges.
+
+## Branches
+
+- Never commit directly to `main` or `master`.
+- Feature work: `feat/<short-name>`
+- Bug fixes: `fix/<short-name>`
+- Documentation: `docs/<short-name>`
+
+## Pull requests
+
+- Open every change as a PR into `main`.
+- All CI checks must pass before merge.
+- Squash or merge commit per repo default.
+- One logical change per PR when possible.
+
+## Force push
+
+- Never force-push `main` or `master`.
+- Force-push feature branches only when explicitly requested.
+
+## Do not commit
+
+- `.env` and other secrets or credential files
+- `.pnpm-store/` (local pnpm cache)
+- `docs/superpowers/` agent scratch notes

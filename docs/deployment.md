@@ -84,4 +84,4 @@ See [.env.example](../.env.example). Key production vars:
 - Caddy proxies `/api/`, `/oauth2/`, `/login/`, `/actuator/` to API; everything else to Next.js
 - supervisord manages API, Worker, Web, and Caddy with autorestart
 
-[Back to Documentation Index](README.md) | [Project README](../README.md)
+[Back to Documentation Index](README.md) | [Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)

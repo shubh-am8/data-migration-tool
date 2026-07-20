@@ -27,7 +27,7 @@ Open-source guides for the Data Migration Platform.
 
 ## Contribute
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for prerequisites, PR checklist, and code conventions.
+See [Contributing on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/CONTRIBUTING.md) for prerequisites, PR checklist, and code conventions.
 
 ## Release Notes
 
@@ -35,4 +35,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for prerequisites, PR checklist, and c
 
 ---
 
-[Back to Project README](../README.md)
+[Project README on GitHub](https://github.com/shubh-am8/data-migration-tool/blob/main/README.md)
