@@ -56,6 +56,13 @@ app:
     metrics-url: ${WORKER_METRICS_URL:http://localhost:8081}
   plugins:
     dir: ${PLUGINS_DIR:./data/plugins}
+  marketplace:
+    repo: ${MARKETPLACE_REPO:OWNER/data-migration-tool}
+    mode: ${MARKETPLACE_MODE:local}
+    # Defaults are relative to services/api (the JVM working directory for both `mvn
+    # spring-boot:run` and Surefire-forked tests); run-local-dev.sh overrides with absolute paths.
+    local-dir: ${MARKETPLACE_LOCAL_DIR:../../marketplace/dist}
+    catalog-path: ${MARKETPLACE_CATALOG_PATH:../../marketplace/catalog.json}
 
 logging:
   level:

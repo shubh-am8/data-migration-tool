@@ -1,6 +1,8 @@
 package com.migration.connectors;
 
 import com.migration.auth.UserService;
+import com.migration.marketplace.MarketplaceCatalog;
+import com.migration.marketplace.MarketplaceRemoteInstallService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -12,6 +14,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/marketplace")
@@ -21,17 +24,23 @@ public class MarketplaceController {
     private final ConnectionRepository connectionRepository;
     private final PluginDirectoryService pluginDirectory;
     private final UserService userService;
+    private final MarketplaceCatalog marketplaceCatalog;
+    private final MarketplaceRemoteInstallService remoteInstallService;
 
     public MarketplaceController(ConnectorPluginRepository pluginRepository,
                                  ConnectorPluginRegistry pluginRegistry,
                                  ConnectionRepository connectionRepository,
                                  PluginDirectoryService pluginDirectory,
-                                 UserService userService) {
+                                 UserService userService,
+                                 MarketplaceCatalog marketplaceCatalog,
+                                 MarketplaceRemoteInstallService remoteInstallService) {
         this.pluginRepository = pluginRepository;
         this.pluginRegistry = pluginRegistry;
         this.connectionRepository = connectionRepository;
         this.pluginDirectory = pluginDirectory;
         this.userService = userService;
+        this.marketplaceCatalog = marketplaceCatalog;
+        this.remoteInstallService = remoteInstallService;
     }
 
     @GetMapping
@@ -42,14 +51,17 @@ public class MarketplaceController {
     @PostMapping("/{pluginId}/install")
     public Map<String, Object> install(@PathVariable String pluginId, Authentication auth) {
         requireAdmin(auth);
+        var catalogItem = marketplaceCatalog.find(pluginId);
+        if (catalogItem.isPresent() && "TOOL".equals(catalogItem.get().kind())) {
+            return installTool(pluginId);
+        }
         ConnectorPluginEntity entity = pluginRepository.findById(pluginId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Plugin not found"));
         try {
             if (entity.isBuiltin() || Files.existsBundled(pluginDirectory, pluginId)) {
                 pluginDirectory.installBuiltin(pluginId);
             } else if (pluginRegistry.get(pluginId).isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "No bundled JAR for " + pluginId + " — upload a connector JAR first");
+                fetchFromMarketplaceOrFail(pluginId, catalogItem);
             }
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -62,6 +74,35 @@ public class MarketplaceController {
         }
         entity.setEnabled(true);
         return toDto(pluginRepository.save(entity));
+    }
+
+    /** No bundled JAR on disk: try the Marketplace (local dist or GitHub Releases) before giving up. */
+    private void fetchFromMarketplaceOrFail(
+        String pluginId, Optional<MarketplaceCatalog.CatalogItem> catalogItem
+    ) {
+        if (catalogItem.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "No bundled JAR for " + pluginId + " — upload a connector JAR first");
+        }
+        var result = remoteInstallService.install(pluginId);
+        if (result instanceof MarketplaceRemoteInstallService.InstallResult.Failed failed) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Marketplace install failed for " + pluginId + ": " + failed.message());
+        }
+    }
+
+    private Map<String, Object> installTool(String toolId) {
+        var result = remoteInstallService.install(toolId);
+        if (result instanceof MarketplaceRemoteInstallService.InstallResult.Failed failed) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, failed.message());
+        }
+        MarketplaceRemoteInstallService.InstallResult.Ok ok = (MarketplaceRemoteInstallService.InstallResult.Ok) result;
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", ok.id());
+        dto.put("kind", "TOOL");
+        dto.put("version", ok.version());
+        dto.put("installed", true);
+        return dto;
     }
 
     @PostMapping("/{pluginId}/uninstall")

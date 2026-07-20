@@ -72,7 +72,11 @@ prepare_dev_stack() {
 
 start_api() {
   echo "Starting API (port 8080)..."
-  (cd "${ROOT_DIR}/services/api" && PLUGINS_DIR="${ROOT_DIR}/data/plugins" mvn -q spring-boot:run) &
+  (cd "${ROOT_DIR}/services/api" && \
+    PLUGINS_DIR="${ROOT_DIR}/data/plugins" \
+    MARKETPLACE_LOCAL_DIR="${ROOT_DIR}/marketplace/dist" \
+    MARKETPLACE_CATALOG_PATH="${ROOT_DIR}/marketplace/catalog.json" \
+    mvn -q spring-boot:run) &
   record_pid $!
   wait_for_port localhost 8080 120 || { echo "API failed to start on :8080"; exit 1; }
 }

@@ -20,6 +20,7 @@ public class PluginDirectoryService {
     private final Path root;
     private final Path bundled;
     private final Path installed;
+    private final Path tools;
     private final ConnectorPluginRegistry registry;
 
     public PluginDirectoryService(
@@ -30,14 +31,18 @@ public class PluginDirectoryService {
         this.root = Path.of(pluginsDir).toAbsolutePath().normalize();
         this.bundled = root.resolve("bundled");
         this.installed = root.resolve("installed");
+        this.tools = root.resolve("tools");
         Files.createDirectories(bundled);
         Files.createDirectories(installed);
+        Files.createDirectories(tools);
         ensureBundledPostgresql();
         reload();
     }
 
     public Path bundledDir() { return bundled; }
     public Path installedDir() { return installed; }
+    /** Root for extracted TOOL-kind marketplace installs, e.g. {@code tools/{id}/}. */
+    public Path toolsDir() { return tools; }
 
     public synchronized void reload() throws IOException {
         List<ConnectorPlugin> fromJars = PluginJarLoader.loadInstalled(installed);
