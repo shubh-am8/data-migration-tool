@@ -21,8 +21,8 @@ Open http://localhost:3000
 
 | Command | What starts |
 |---|---|
-| `./run-local-dev.sh` | Postgres + Redis + API + Worker + Frontend |
-| `./run-local-dev.sh --backend` | Postgres + Redis + API + Worker |
+| `./run-local-dev.sh` | Postgres + Lab DB + Redis + API + Worker + Frontend |
+| `./run-local-dev.sh --backend` | Postgres + Lab DB + Redis + API + Worker |
 | `./run-local-dev.sh --frontend` | Frontend only (API must already run) |
 | `./run-local-dev.sh --stop-infra-on-exit` | On Ctrl+C, stop Postgres/Redis via docker compose down |
 | `./run-local-dev.sh --keep-infra` | Deprecated no-op (infra stays running by default) |
@@ -39,7 +39,7 @@ flowchart TD
   env --> prepare[prepare_dev_stack clear ports]
   prepare --> mode{Mode?}
   mode -->|frontend| fe[start_frontend :3000]
-  mode -->|backend or all| infra[start_infra Postgres + Redis]
+  mode -->|backend or all| infra[start_infra Postgres + Lab DB + Redis]
   infra --> build[build_backend seed bundled JAR]
   build --> api[start_api :8080]
   api --> worker[start_worker :8081]
@@ -56,7 +56,8 @@ flowchart TD
 | Frontend | 3000 |
 | API | 8080 |
 | Worker | 8081 |
-| PostgreSQL | 5432 |
+| PostgreSQL (platform) | 5432 |
+| Lab PostgreSQL | 5433 |
 | Redis | 6379 |
 
 ## Tests

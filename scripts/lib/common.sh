@@ -48,9 +48,10 @@ cleanup_pids() {
 }
 
 start_infra() {
-  echo "Starting Postgres + Redis..."
-  docker compose -f "${COMPOSE_FILE}" up appdb redis -d
+  echo "Starting Postgres + Redis + Lab DB..."
+  docker compose -f "${COMPOSE_FILE}" up appdb redis labdb -d
   wait_for_port localhost 5432 90
+  wait_for_port localhost 5433 90
   wait_for_port localhost 6379 30
   echo "Infrastructure ready."
 }
