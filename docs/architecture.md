@@ -16,7 +16,8 @@ flowchart TB
   end
 
   subgraph infra [Infrastructure]
-    PG[(PostgreSQL appdb)]
+    PG[(PostgreSQL migration_app)]
+    LabPG[(PostgreSQL migration_lab)]
     Redis[(Redis)]
   end
 
@@ -31,6 +32,8 @@ flowchart TB
   API --> Redis
   Worker --> PG
   Worker --> Redis
+  Worker --> LabPG
+  API --> LabPG
   Worker --> PGPlugin
   API --> PGPlugin
 ```
@@ -44,7 +47,9 @@ flowchart TB
 | Worker | `services/worker/` | Batch copy, hot/cold phases, reconciliation |
 | Connector SDK | `packages/connector-sdk/` | Plugin interface, filter types |
 | Domain | `packages/domain/` | Shared JPA entities, AES decrypt |
-| PostgreSQL Plugin | `connectors/postgresql/` | PG introspection, batch read/write |
+| PostgreSQL Plugin | `marketplace/connectors/postgresql/` | PG introspection, batch read/write (release asset, not main reactor) |
+| Marketplace catalog | `marketplace/` | Connectors + TOOL plugins (SHA-256 install) |
+| Lab DB | `infra/docker-compose.dev.yml` (`labdb`) | `migration_lab` with `app`/`test` schemas for dev practice |
 
 ## Data Flow: Job Execution
 

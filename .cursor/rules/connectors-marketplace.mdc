@@ -1,14 +1,17 @@
 ---
 description: Connector marketplace and JAR plugin conventions
-globs: "{services/**/connectors/**,packages/connector-sdk/**,connectors/**,apps/web/src/app/connectors/**,apps/web/src/components/connectors/**}"
+globs: "{services/**/connectors/**,packages/connector-sdk/**,marketplace/**,connectors/**,apps/web/src/app/connectors/**,apps/web/src/components/connectors/**}"
 alwaysApply: false
 ---
 
 # Connectors & marketplace
 
-- JARs under `app.plugins.dir` (`bundled/` + `installed/`); load via `PluginJarLoader` + `ServiceLoader`.
-- Built-in PostgreSQL always listed; `enabled=false` until Marketplace **Install** copies the bundled JAR.
+- Catalog: `marketplace/catalog.json` — `CONNECTOR` JARs + `TOOL` zips (SHA-256 verified install).
+- JARs load from `app.plugins.dir/installed/` via `PluginJarLoader` + `ServiceLoader`. Main Maven build does **not** seed `bundled/`.
+- PostgreSQL sources: `marketplace/connectors/postgresql/` (release asset). Install from Marketplace before creating connections.
+- TOOL example: `lab-devtools` → `data/plugins/tools/lab-devtools/`; applies lab DDL to `migration_lab` (:5433). Not preinstalled.
 - Connections need catalog `enabled=true` **and** a loaded registry plugin — never hardcode `?plugin=postgresql` as the only path.
+- Job `runMode`: `TEST` | `PRODUCTION`. TEST requires sandbox source+dest; simulation only in TEST. Connection `sandbox` flag on create/update.
 - Custom connectors: implement `ConnectorPlugin`, ship SPI + JAR, upload via `POST /api/marketplace/upload` (admin).
 - Worker and API share the same plugins dir; no `new PostgresqlConnectorPlugin()`.
-- Docs: `docs/connectors/adding-a-connector.md`, `docs/marketplace.md`.
+- Docs: `docs/marketplace.md`, `docs/lab-devtools.md`, `docs/connectors/adding-a-connector.md`.

@@ -40,7 +40,7 @@ flowchart TD
   prepare --> mode{Mode?}
   mode -->|frontend| fe[start_frontend :3000]
   mode -->|backend or all| infra[start_infra Postgres + Lab DB + Redis]
-  infra --> build[build_backend seed bundled JAR]
+  infra --> build[build_backend API + Worker only]
   build --> api[start_api :8080]
   api --> worker[start_worker :8081]
   worker --> allCheck{Mode = all?}
@@ -57,8 +57,16 @@ flowchart TD
 | API | 8080 |
 | Worker | 8081 |
 | PostgreSQL (platform) | 5432 |
-| Lab PostgreSQL | 5433 |
+| Lab PostgreSQL (`migration_lab`) | 5433 |
 | Redis | 6379 |
+
+## Lab database and dev tools
+
+Local Compose starts **`labdb`** alongside `appdb` and Redis. The lab instance (`migration_lab` on `:5433`) holds practice data in `app`/`test` schemas — separate from platform metadata in `migration_app`.
+
+Install **`lab-devtools`** from the Marketplace to apply lab DDL and enable TEST-mode simulation jobs. See [Lab Dev Tools](lab-devtools.md).
+
+Connectors are **not** copied into `data/plugins/bundled/` at startup. Build dist assets with `marketplace/scripts/build-dist.sh`, then install PostgreSQL (and other catalog items) from the Marketplace UI.
 
 ## Tests
 

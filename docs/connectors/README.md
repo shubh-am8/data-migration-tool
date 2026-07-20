@@ -33,11 +33,13 @@ public interface ConnectorPlugin {
 }
 ```
 
-## Built-in Connectors
+## Catalog Connectors
 
-| ID | Module | Status |
+| ID | Source module | Install |
 |---|---|---|
-| `postgresql` | `connectors/postgresql/` | Available |
+| `postgresql` | `marketplace/connectors/postgresql/` | Marketplace install (local dist or GitHub Release) |
+
+Connectors are not compiled into the main API/worker build or seeded into `bundled/` at dev startup. See [Marketplace](../marketplace.md) and [Lab Dev Tools](../lab-devtools.md) for TOOL plugins.
 
 ## Registration
 
