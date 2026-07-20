@@ -1,6 +1,7 @@
 package com.migration.admin;
 
 import com.migration.auth.UserService;
+import com.migration.metrics.HttpRequestMetrics;
 import com.migration.metrics.MetricSampleService;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +53,9 @@ public class InfraController {
             "buildId", System.getenv().getOrDefault("BUILD_ID", "dev"),
             "note", "Next.js process metrics are host-level only"
         ));
+        if (meterRegistry != null) {
+            out.put("http", HttpRequestMetrics.toMap(HttpRequestMetrics.from(meterRegistry)));
+        }
         out.put("samples", metricSampleService.samples());
         return out;
     }

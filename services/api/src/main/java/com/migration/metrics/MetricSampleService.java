@@ -73,7 +73,14 @@ public class MetricSampleService {
             point.put("poolMax", hikari.getMaximumPoolSize());
         }
 
+        point.putAll(httpStatusPoint());
         offer(point);
+    }
+
+    Map<String, Object> httpStatusPoint() {
+        if (meterRegistry == null) return Map.of();
+        var s = HttpRequestMetrics.from(meterRegistry).status();
+        return Map.of("http2xx", s.s2xx(), "http4xx", s.s4xx(), "http5xx", s.s5xx());
     }
 
     /** Visible for tests. */

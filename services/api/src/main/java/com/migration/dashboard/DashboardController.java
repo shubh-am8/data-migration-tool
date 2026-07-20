@@ -4,6 +4,7 @@ import com.migration.auth.UserRepository;
 import com.migration.connectors.ConnectionRepository;
 import com.migration.jobs.JobRepository;
 import com.migration.jobs.JobStatus;
+import com.migration.metrics.HttpRequestMetrics;
 import com.migration.metrics.MetricSampleService;
 import com.migration.workers.WorkerHeartbeatEntity;
 import com.migration.workers.WorkerHeartbeatRepository;
@@ -83,6 +84,9 @@ public class DashboardController {
         result.put("apiCpu", gauge("process.cpu.usage"));
         Double mem = gauge("jvm.memory.used");
         if (mem != null) result.put("apiMemUsedMb", mem / (1024.0 * 1024.0));
+        if (meterRegistry != null) {
+            result.put("http", HttpRequestMetrics.toMap(HttpRequestMetrics.from(meterRegistry)));
+        }
         result.put("samples", metricSampleService.samples());
         return result;
     }
