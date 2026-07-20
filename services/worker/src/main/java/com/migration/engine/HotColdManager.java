@@ -33,23 +33,29 @@ public class HotColdManager {
                 waitForResume(commandChecker);
             }
             phase.setStatus(PhaseStatus.RUNNING);
-            BatchCopyEngine.BatchResult batchResult = runPhaseChunks(
+            PhaseChunkResult chunkResult = runPhaseChunks(
                 job, sourceConfig, destConfig, phase, effectiveEnd, hotBoundary,
                 minHours, maxHours, commandChecker);
+            BatchCopyEngine.BatchResult batchResult = chunkResult.batchResult();
             phase.setRowsProcessed(batchResult.written() + batchResult.skipped() + batchResult.updated());
             phase.setRowsTotal(batchResult.sourceCount());
-            phase.setStatus(PhaseStatus.COMPLETED);
+            // Only mark COMPLETED if every chunk ran; a mid-phase stop leaves the
+            // phase RUNNING rather than lying that it finished (no CANCELLED status exists).
+            if (chunkResult.completed()) {
+                phase.setStatus(PhaseStatus.COMPLETED);
+            }
             results.add(new PhaseResult(phase.getPhase(), batchResult));
         }
         return results;
     }
 
-    private BatchCopyEngine.BatchResult runPhaseChunks(JobEntity job, Map<String, String> sourceConfig,
+    private PhaseChunkResult runPhaseChunks(JobEntity job, Map<String, String> sourceConfig,
             Map<String, String> destConfig, JobPhaseEntity phase, Instant effectiveEnd, Instant hotBoundary,
             int minHours, int maxHours, CommandChecker commandChecker) throws Exception {
         if (job.getTsColumn() == null) {
-            return batchCopyEngine.copyPhase(job, sourceConfig, destConfig,
+            BatchCopyEngine.BatchResult result = batchCopyEngine.copyPhase(job, sourceConfig, destConfig,
                 phase.getConflictMode(), List.of(), null, ROW_BATCH_SIZE);
+            return new PhaseChunkResult(result, true);
         }
 
         Instant windowStart = phase.getPhase() == PhaseType.HOT ? hotBoundary : job.getRangeStart();
@@ -57,8 +63,12 @@ public class HotColdManager {
         List<TimeChunkPlanner.TimeChunk> chunks = TimeChunkPlanner.plan(windowStart, windowEnd, minHours, maxHours);
 
         long sourceCount = 0, written = 0, skipped = 0, updated = 0;
+        boolean completed = true;
         for (TimeChunkPlanner.TimeChunk chunk : chunks) {
-            if (commandChecker.shouldStop()) break;
+            if (commandChecker.shouldStop()) {
+                completed = false;
+                break;
+            }
             String filter = JobEntityHotCold.timeRangeFilter(job.getTsColumn(), chunk.start(), chunk.end());
             BatchCopyEngine.BatchResult result = batchCopyEngine.copyPhase(job, sourceConfig, destConfig,
                 phase.getConflictMode(), List.of(), filter, ROW_BATCH_SIZE);
@@ -67,7 +77,7 @@ public class HotColdManager {
             skipped += result.skipped();
             updated += result.updated();
         }
-        return new BatchCopyEngine.BatchResult(sourceCount, written, skipped, updated);
+        return new PhaseChunkResult(new BatchCopyEngine.BatchResult(sourceCount, written, skipped, updated), completed);
     }
 
     private List<JobPhaseEntity> orderedPhases(MigrationMode mode, List<JobPhaseEntity> phases) {
@@ -97,4 +107,6 @@ public class HotColdManager {
     }
 
     public record PhaseResult(PhaseType phase, BatchCopyEngine.BatchResult batchResult) {}
+
+    private record PhaseChunkResult(BatchCopyEngine.BatchResult batchResult, boolean completed) {}
 }

@@ -71,4 +71,66 @@ class HotColdManagerTest {
         assertEquals(1, results.size());
         assertEquals(PhaseType.COLD, results.get(0).phase());
     }
+
+    @Test
+    void leavesPhaseRunningWhenStoppedMidChunkLoop() throws Exception {
+        var engine = new BatchCopyEngine(new StubPlugin());
+        var manager = new HotColdManager(engine);
+
+        JobEntity job = new JobEntity();
+        job.setMigrationMode(MigrationMode.HOT_ONLY);
+        job.setSchemaName("public");
+        job.setSourceTable("t");
+        job.setTsColumn("created_at");
+        job.setHotDays(7);
+        job.setRangeStart(Instant.now().minus(Duration.ofDays(30)));
+        job.setMinChunkDurationHours(24);
+        job.setMaxChunkDurationHours(24);
+        job.setConflictColumns(java.util.List.of("id"));
+
+        JobPhaseEntity hot = new JobPhaseEntity();
+        hot.setPhase(PhaseType.HOT);
+        hot.setConflictMode(ConflictMode.DO_UPDATE);
+
+        // Hot window is 7 days of 24h chunks (7 chunks). Let two chunks run, then stop.
+        var callCount = new java.util.concurrent.atomic.AtomicInteger();
+        var checker = new HotColdManager.CommandChecker() {
+            @Override public boolean isPaused() { return false; }
+            @Override public boolean shouldStop() { return callCount.getAndIncrement() >= 2; }
+        };
+
+        manager.runJob(job, java.util.Map.of(), java.util.Map.of(), java.util.List.of(hot), checker);
+
+        assertEquals(PhaseStatus.RUNNING, hot.getStatus());
+    }
+
+    @Test
+    void marksPhaseCompletedWhenAllChunksFinish() throws Exception {
+        var engine = new BatchCopyEngine(new StubPlugin());
+        var manager = new HotColdManager(engine);
+
+        JobEntity job = new JobEntity();
+        job.setMigrationMode(MigrationMode.HOT_ONLY);
+        job.setSchemaName("public");
+        job.setSourceTable("t");
+        job.setTsColumn("created_at");
+        job.setHotDays(7);
+        job.setRangeStart(Instant.now().minus(Duration.ofDays(30)));
+        job.setMinChunkDurationHours(24);
+        job.setMaxChunkDurationHours(24);
+        job.setConflictColumns(java.util.List.of("id"));
+
+        JobPhaseEntity hot = new JobPhaseEntity();
+        hot.setPhase(PhaseType.HOT);
+        hot.setConflictMode(ConflictMode.DO_UPDATE);
+
+        var checker = new HotColdManager.CommandChecker() {
+            @Override public boolean isPaused() { return false; }
+            @Override public boolean shouldStop() { return false; }
+        };
+
+        manager.runJob(job, java.util.Map.of(), java.util.Map.of(), java.util.List.of(hot), checker);
+
+        assertEquals(PhaseStatus.COMPLETED, hot.getStatus());
+    }
 }
