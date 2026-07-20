@@ -27,6 +27,7 @@ const OSS_DOC_SLUGS = [
   "marketplace",
   "connectors-overview",
   "adding-a-connector",
+  "lab-devtools",
   "api",
   "worker",
   "frontend",

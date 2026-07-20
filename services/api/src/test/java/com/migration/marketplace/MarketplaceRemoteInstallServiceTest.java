@@ -10,6 +10,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -81,6 +82,32 @@ class MarketplaceRemoteInstallServiceTest {
             () -> MarketplaceRemoteInstallService.validateDownloadUrl(
                 "https://evil.example.com/malware.jar"));
         assertTrue(ex.getMessage().contains("not allowlisted"));
+    }
+
+    @Test
+    void redirectToNonAllowlistedHostIsRejected() {
+        URI from = URI.create("https://github.com/owner/repo/releases/download/v1.0.0/thing.jar");
+        SecurityException ex = assertThrows(SecurityException.class,
+            () -> MarketplaceRemoteInstallService.validateRedirectTarget(
+                from, "https://evil.example.com/malware.jar"));
+        assertTrue(ex.getMessage().contains("not allowlisted"));
+    }
+
+    @Test
+    void redirectToAllowlistedHostIsAccepted() {
+        URI from = URI.create("https://github.com/owner/repo/releases/download/v1.0.0/thing.jar");
+        URI target = MarketplaceRemoteInstallService.validateRedirectTarget(
+            from, "https://objects.githubusercontent.com/github-production-release-asset/abc");
+        assertEquals("https://objects.githubusercontent.com/github-production-release-asset/abc",
+            target.toString());
+    }
+
+    @Test
+    void redirectToRelativeLocationIsResolvedAndValidated() {
+        URI from = URI.create("https://github.com/owner/repo/releases/download/v1.0.0/thing.jar");
+        SecurityException ex = assertThrows(SecurityException.class,
+            () -> MarketplaceRemoteInstallService.validateRedirectTarget(from, "http://github.com/other"));
+        assertTrue(ex.getMessage().contains("HTTPS"));
     }
 
     @Test

@@ -59,6 +59,9 @@ public class MarketplaceRemoteInstallService {
     /** Not shipped in the catalog under any other kind — the only TOOL that owns lab DDL today. */
     private static final String LAB_DEVTOOLS_ID = "lab-devtools";
 
+    /** GitHub's asset redirect chain is typically 1-2 hops; this bounds a malicious/looping chain. */
+    private static final int MAX_REDIRECTS = 5;
+
     private final MarketplaceCatalog catalog;
     private final PluginDirectoryService pluginDirectory;
     private final MarketplaceInstallRepository installRepository;
@@ -66,7 +69,12 @@ public class MarketplaceRemoteInstallService {
     private final String mode;
     private final Path localDir;
     private final String repo;
-    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    // Redirects are followed manually in fetchWithRedirects() so each hop's target can be
+    // re-validated against ALLOWED_DOWNLOAD_HOSTS; the JDK's built-in follower has no such hook.
+    private final HttpClient httpClient = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(10))
+        .followRedirects(HttpClient.Redirect.NEVER)
+        .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public MarketplaceRemoteInstallService(
@@ -156,13 +164,7 @@ public class MarketplaceRemoteInstallService {
     }
 
     private JsonNode getJson(String url) throws IOException {
-        validateDownloadUrl(url);
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-            .header("Accept", "application/vnd.github+json")
-            .timeout(Duration.ofSeconds(15))
-            .GET()
-            .build();
-        HttpResponse<byte[]> response = send(request);
+        HttpResponse<byte[]> response = fetchWithRedirects(url, Duration.ofSeconds(15), "application/vnd.github+json");
         if (response.statusCode() != 200) {
             throw new IOException("GitHub API request failed (" + url + "): HTTP " + response.statusCode());
         }
@@ -170,16 +172,52 @@ public class MarketplaceRemoteInstallService {
     }
 
     private byte[] getBytes(String url) throws IOException {
-        validateDownloadUrl(url);
-        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-            .timeout(Duration.ofSeconds(30))
-            .GET()
-            .build();
-        HttpResponse<byte[]> response = send(request);
+        HttpResponse<byte[]> response = fetchWithRedirects(url, Duration.ofSeconds(30), null);
         if (response.statusCode() != 200) {
             throw new IOException("Asset download failed (" + url + "): HTTP " + response.statusCode());
         }
         return response.body();
+    }
+
+    /**
+     * GETs {@code url}, following HTTP redirects manually (up to {@link #MAX_REDIRECTS} hops) so
+     * that every hop — not just the first URL — is re-validated against the HTTPS host allowlist.
+     */
+    private HttpResponse<byte[]> fetchWithRedirects(String url, Duration timeout, String acceptHeader)
+            throws IOException {
+        validateDownloadUrl(url);
+        URI uri = URI.create(url);
+        for (int hop = 0; ; hop++) {
+            HttpRequest.Builder builder = HttpRequest.newBuilder(uri).timeout(timeout).GET();
+            if (acceptHeader != null) {
+                builder.header("Accept", acceptHeader);
+            }
+            HttpResponse<byte[]> response = send(builder.build());
+            int status = response.statusCode();
+            if (status < 300 || status >= 400) {
+                return response;
+            }
+            if (hop >= MAX_REDIRECTS) {
+                throw new IOException("Too many redirects fetching " + url);
+            }
+            String location = response.headers().firstValue("Location").orElse(null);
+            if (location == null) {
+                throw new IOException("Redirect with no Location header: " + uri);
+            }
+            uri = validateRedirectTarget(uri, location);
+        }
+    }
+
+    /**
+     * Resolves a redirect {@code Location} header against the URI that produced it and validates
+     * the resulting absolute URL against the same allowlist as the original request.
+     *
+     * @throws SecurityException if the resolved target is not an allowlisted HTTPS host.
+     */
+    static URI validateRedirectTarget(URI from, String location) {
+        URI target = from.resolve(location);
+        validateDownloadUrl(target.toString());
+        return target;
     }
 
     private HttpResponse<byte[]> send(HttpRequest request) throws IOException {

@@ -34,10 +34,6 @@ grep -q 'prepare_dev_stack()' "${ROOT}/scripts/run-local-dev.sh" || fail "run-lo
 grep -q 'prepare_dev_stack "${MODE}"' "${ROOT}/scripts/run-local-dev.sh" || fail "main must call prepare_dev_stack before starts"
 pass "prepare_dev_stack wired in main flow"
 
-if grep -n 'stop_infra' "${ROOT}/scripts/run-local-dev.sh" | grep -v '#' | grep -q 'prepare_dev_stack\|on_exit'; then
-  # will refine after implement — for RED, assert default KEEP_INFRA=true
-  :
-fi
 if ! grep -q 'KEEP_INFRA=true' "${ROOT}/scripts/run-local-dev.sh"; then
   fail "KEEP_INFRA must default to true so Docker survives app exit"
 else
