@@ -4,16 +4,16 @@ overview: Fix `run-local-dev.sh` so every start tears down this project's prior 
 todos:
   - id: task-1-port-helpers
     content: Add pids_on_port, kill_port_listeners, listener_is_project_infra, assert_ports_free to common.sh + structural tests
-    status: in_progress
+    status: completed
   - id: task-2-prepare-stack
     content: Implement prepare_dev_stack(mode), rewire main(), fix frontend wait, remove old clear_stale_dev_ports_for_mode
-    status: pending
+    status: completed
   - id: task-3-update-tests
     content: Update run-local-dev_test.sh for new function names and frontend wait assertion
-    status: pending
+    status: completed
   - id: task-4-docs-verify
     content: Update docs/development.md and run manual port-conflict verification
-    status: pending
+    status: completed
 isProject: false
 ---
 

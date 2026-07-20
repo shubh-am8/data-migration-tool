@@ -29,7 +29,7 @@ Open http://localhost:3000
 
 ## Dev Script Flow
 
-On every start, tears down this project's Docker infra and kills stale listeners on dev ports before starting.
+On every start, clears stale listeners on that mode's ports; for backend/all, also tears down this project's Docker infra before starting.
 
 ```mermaid
 flowchart TD
