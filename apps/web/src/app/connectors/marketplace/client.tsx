@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { AppLoader } from "@/components/shared/AppLoader";
 import { ConnectorCard } from "@/components/connectors/ConnectorCard";
+import { DocLink } from "@/components/shared/DocLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -155,19 +156,18 @@ export default function MarketplaceClient() {
                 onAdd={() => router.push(`/connections/new?plugin=${p.id}`)}
               />
             ))}
-            <Card>
+            <Card className="flex flex-col">
               <CardHeader>
                 <CardTitle>Build your own</CardTitle>
                 <CardDescription>
                   Implement the ConnectorPlugin SPI, package a JAR, and upload it here.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                <Button variant="outline" disabled>
-                  docs/connectors/adding-a-connector.md
-                </Button>
+              <CardContent className="flex min-w-0 flex-col gap-2">
+                <DocLink slug="adding-a-connector" />
                 <p className="text-sm text-muted-foreground">
-                  Docs live in the repo under <code>docs/connectors/</code>.
+                  Open the guide in-app, or read the same file in the repo under{" "}
+                  <code className="break-all">docs/connectors/</code>.
                 </p>
               </CardContent>
             </Card>
