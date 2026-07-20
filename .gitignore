@@ -34,6 +34,8 @@ coverage/
 
 # Superpowers scratch
 .superpowers/
+docs/superpowers/
+.cursor/plans/
 
 # Docker volumes
 appdb_data/

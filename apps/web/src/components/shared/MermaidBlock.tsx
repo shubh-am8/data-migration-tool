@@ -2,14 +2,25 @@
 
 import { useEffect, useId, useState } from "react";
 
+let mermaidInit: Promise<typeof import("mermaid").default> | undefined;
+
+function getMermaid() {
+  if (!mermaidInit) {
+    mermaidInit = import("mermaid").then(({ default: mermaid }) => {
+      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral" });
+      return mermaid;
+    });
+  }
+  return mermaidInit;
+}
+
 export function MermaidBlock({ chart }: { chart: string }) {
   const id = useId().replace(/:/g, "");
   const [svg, setSvg] = useState<string>("");
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const mermaid = (await import("mermaid")).default;
-      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "neutral" });
+      const mermaid = await getMermaid();
       const { svg } = await mermaid.render(`mmd-${id}`, chart);
       if (!cancelled) setSvg(svg);
     })().catch(() => {

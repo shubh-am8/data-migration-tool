@@ -4,6 +4,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MermaidBlock } from "@/components/shared/MermaidBlock";
+import { hrefToDocSlug } from "@/lib/docs/registry";
 
 function isMermaidCode(child: React.ReactNode): boolean {
   return (
@@ -40,16 +41,20 @@ const markdownComponents = {
       <pre className="overflow-x-auto rounded-md bg-muted p-4 font-mono text-xs">{children}</pre>
     );
   },
-  a: ({ children, href }: React.ComponentProps<"a">) => (
-    <a
-      href={href}
-      className="text-primary underline underline-offset-4 hover:opacity-80"
-      target={href?.startsWith("http") ? "_blank" : undefined}
-      rel={href?.startsWith("http") ? "noopener noreferrer" : undefined}
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href }: React.ComponentProps<"a">) => {
+    const resolved = hrefToDocSlug(href);
+    const external = resolved?.startsWith("http");
+    return (
+      <a
+        href={resolved}
+        className="text-primary underline underline-offset-4 hover:opacity-80"
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
+      >
+        {children}
+      </a>
+    );
+  },
   ul: ({ children }: React.ComponentProps<"ul">) => (
     <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">{children}</ul>
   ),

@@ -65,3 +65,34 @@ export function resolveDocPath(slug: string): string | null {
 export function listDocSlugs(): string[] {
   return Object.keys(DOC_REGISTRY);
 }
+
+/** Rewrite relative .md hrefs to in-app /docs/{slug} when registered. */
+export function hrefToDocSlug(href: string | undefined): string | undefined {
+  if (!href || /^https?:\/\//i.test(href)) return href;
+
+  const normalized = href.replace(/^\.\//, "");
+
+  if (normalized === "README.md" || normalized === "docs/README.md" || normalized === "../README.md") {
+    return "/docs";
+  }
+
+  for (const [slug, { relativePath }] of Object.entries(DOC_REGISTRY)) {
+    if (
+      normalized === relativePath ||
+      normalized.endsWith(`/${relativePath}`) ||
+      normalized.endsWith(relativePath)
+    ) {
+      return `/docs/${slug}`;
+    }
+  }
+
+  const basename = normalized.split("/").pop();
+  if (basename?.endsWith(".md")) {
+    const matches = Object.entries(DOC_REGISTRY).filter(
+      ([, { relativePath }]) => relativePath === basename || relativePath.endsWith(`/${basename}`)
+    );
+    if (matches.length === 1) return `/docs/${matches[0][0]}`;
+  }
+
+  return href;
+}

@@ -1,4 +1,4 @@
-import { DOC_REGISTRY, listDocSlugs, resolveDocPath } from "./registry";
+import { DOC_REGISTRY, hrefToDocSlug, listDocSlugs, resolveDocPath } from "./registry";
 
 test("allowlisted slug resolves under docs/", () => {
   const p = resolveDocPath("adding-a-connector");
@@ -47,4 +47,16 @@ test("path traversal slugs return null", () => {
   for (const slug of ["../../../etc/passwd", "..%2F..%2Fetc%2Fpasswd", "architecture/../../etc/passwd"]) {
     expect(resolveDocPath(slug)).toBeNull();
   }
+});
+
+test("hrefToDocSlug rewrites registered markdown links", () => {
+  expect(hrefToDocSlug("marketplace.md")).toBe("/docs/marketplace");
+  expect(hrefToDocSlug("connectors/adding-a-connector.md")).toBe("/docs/adding-a-connector");
+  expect(hrefToDocSlug("adding-a-connector.md")).toBe("/docs/adding-a-connector");
+  expect(hrefToDocSlug("../marketplace.md")).toBe("/docs/marketplace");
+  expect(hrefToDocSlug("README.md")).toBe("/docs");
+  expect(hrefToDocSlug("../README.md")).toBe("/docs");
+  expect(hrefToDocSlug("connectors/README.md")).toBe("/docs/connectors-overview");
+  expect(hrefToDocSlug("https://example.com/foo")).toBe("https://example.com/foo");
+  expect(hrefToDocSlug("CHANGELOG.md")).toBe("CHANGELOG.md");
 });
