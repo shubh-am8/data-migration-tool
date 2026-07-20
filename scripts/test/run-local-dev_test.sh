@@ -35,6 +35,9 @@ grep -q 'prepare_dev_stack "${MODE}"' "${ROOT}/scripts/run-local-dev.sh" || fail
 grep -q 'stop_infra' "${ROOT}/scripts/run-local-dev.sh" || fail "prepare must stop infra for backend/all"
 pass "prepare_dev_stack wired in main flow"
 
+grep -q 'rm -rf "${ROOT_DIR}/apps/web/.next"' "${ROOT}/scripts/run-local-dev.sh" || fail "start_frontend must clear apps/web/.next before next dev"
+pass "start_frontend clears apps/web/.next cache"
+
 grep -A8 'case "${MODE}"' "${ROOT}/scripts/run-local-dev.sh" | grep -q 'wait' || fail "frontend mode must wait for dev server"
 pass "frontend mode waits for dev server"
 
