@@ -30,20 +30,18 @@ else
   pass "spring-boot:run invoked from service module dirs"
 fi
 
+grep -q 'prepare_dev_stack()' "${ROOT}/scripts/run-local-dev.sh" || fail "run-local-dev.sh must define prepare_dev_stack"
+grep -q 'prepare_dev_stack "${MODE}"' "${ROOT}/scripts/run-local-dev.sh" || fail "main must call prepare_dev_stack before starts"
+grep -q 'stop_infra' "${ROOT}/scripts/run-local-dev.sh" || fail "prepare must stop infra for backend/all"
+pass "prepare_dev_stack wired in main flow"
 
-# frontend mode must invoke stale-port cleanup
-if ! grep -q 'frontend).*clear_stale_dev_ports_for_mode "frontend"' "${ROOT}/scripts/run-local-dev.sh"; then
-  fail "frontend mode must clear stale frontend process/port before start"
-else
-  pass "frontend mode clears stale frontend process/port"
-fi
+grep -A5 'frontend)' "${ROOT}/scripts/run-local-dev.sh" | grep -q 'wait' || fail "frontend mode must wait for dev server"
+pass "frontend mode waits for dev server"
 
-# cleanup must have force-kill fallback for stubborn processes
-if ! grep -q 'kill -9' "${ROOT}/scripts/run-local-dev.sh"; then
-  fail "stale port cleanup must force-kill stubborn processes when needed"
+if ! grep -q 'kill -9' "${ROOT}/scripts/lib/common.sh"; then
+  fail "port cleanup must force-kill stubborn processes when needed"
 else
-  pass "stale port cleanup has force-kill fallback"
+  pass "port cleanup has force-kill fallback in common.sh"
 fi
 
 echo "All script tests passed."
-
