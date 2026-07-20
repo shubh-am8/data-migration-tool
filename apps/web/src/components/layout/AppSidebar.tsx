@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MenuIcon } from "lucide-react";
+import { shellAsideClass } from "@/lib/shell-layout";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -56,12 +57,14 @@ export function AppSidebar({ user, admin }: { user: ShellUser | null; admin: boo
 
   return (
     <>
-      <aside className="hidden h-full w-56 shrink-0 flex-col gap-2 border-r bg-muted/30 p-4 md:flex">
+      <aside className={shellAsideClass}>
         <div className="mb-4 px-2">
           <p className="text-lg font-semibold">Migration Tool</p>
           <p className="text-xs text-muted-foreground">Data transfer platform</p>
         </div>
-        <NavLinks pathname={pathname} admin={admin} />
+        <div className="flex-1 overflow-y-auto">
+          <NavLinks pathname={pathname} admin={admin} />
+        </div>
         <div className="mt-auto flex flex-col gap-2 border-t pt-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs text-muted-foreground">Theme</span>

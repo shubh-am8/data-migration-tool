@@ -2,16 +2,17 @@
 
 import { AuthGuard, useAuth } from "@/components/auth/AuthGuard";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { shellMainClass, shellRootClass } from "@/lib/shell-layout";
 
 function ShellInner({ children }: { children: React.ReactNode }) {
   const user = useAuth();
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className={shellRootClass}>
       <AppSidebar
         user={user}
         admin={Boolean(user?.admin)}
       />
-      <main className="flex flex-1 flex-col gap-6 p-4 md:p-6">{children}</main>
+      <main className={shellMainClass}>{children}</main>
     </div>
   );
 }
