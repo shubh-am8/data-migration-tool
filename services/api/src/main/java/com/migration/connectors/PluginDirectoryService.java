@@ -1,0 +1,133 @@
+package com.migration.connectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+
+@Service
+public class PluginDirectoryService {
+    private static final Logger log = LoggerFactory.getLogger(PluginDirectoryService.class);
+
+    private final Path root;
+    private final Path bundled;
+    private final Path installed;
+    private final ConnectorPluginRegistry registry;
+
+    public PluginDirectoryService(
+        @Value("${app.plugins.dir:./data/plugins}") String pluginsDir,
+        ConnectorPluginRegistry registry
+    ) throws IOException {
+        this.registry = registry;
+        this.root = Path.of(pluginsDir).toAbsolutePath().normalize();
+        this.bundled = root.resolve("bundled");
+        this.installed = root.resolve("installed");
+        Files.createDirectories(bundled);
+        Files.createDirectories(installed);
+        ensureBundledPostgresql();
+        reload();
+    }
+
+    public Path bundledDir() { return bundled; }
+    public Path installedDir() { return installed; }
+
+    public synchronized void reload() throws IOException {
+        List<ConnectorPlugin> fromJars = PluginJarLoader.loadInstalled(installed);
+        registry.replaceAll(fromJars);
+        log.info("Loaded {} connector plugin(s) from {}", fromJars.size(), installed);
+    }
+
+    public synchronized void installBuiltin(String pluginId) throws IOException {
+        Path src = bundled.resolve(pluginId + ".jar");
+        if (!Files.isRegularFile(src)) {
+            throw new IllegalArgumentException("Bundled JAR not found for " + pluginId + " at " + src);
+        }
+        Path dest = installed.resolve(pluginId + ".jar");
+        Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING);
+        reload();
+    }
+
+    public synchronized void uninstall(String pluginId) throws IOException {
+        Path jar = installed.resolve(pluginId + ".jar");
+        Files.deleteIfExists(jar);
+        registry.unregister(pluginId);
+        reload();
+    }
+
+    public synchronized String upload(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Empty upload");
+        }
+        Path tmp = Files.createTempFile("plugin-upload-", ".jar");
+        try {
+            file.transferTo(tmp);
+            List<ConnectorPlugin> found = PluginJarLoader.loadJar(tmp);
+            if (found.isEmpty()) {
+                throw new IllegalArgumentException("JAR has no ConnectorPlugin SPI entry");
+            }
+            if (found.size() > 1) {
+                throw new IllegalArgumentException("JAR must contain exactly one ConnectorPlugin");
+            }
+            String id = found.get(0).id();
+            Path dest = installed.resolve(id + ".jar");
+            Files.copy(tmp, dest, StandardCopyOption.REPLACE_EXISTING);
+            reload();
+            return id;
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+    }
+
+    /**
+     * Seeds bundled/postgresql.jar on first boot. Checked locations cover both dev (Maven
+     * reactor build output, any version) and the packaged Docker image (baked seed dir —
+     * see services/api/Dockerfile, services/worker/Dockerfile, infra/Dockerfile).
+     */
+    private void ensureBundledPostgresql() {
+        Path dest = bundled.resolve("postgresql.jar");
+        if (Files.isRegularFile(dest)) return;
+        Path[] searchDirs = {
+            Path.of("connectors/postgresql/target"),
+            Path.of("../connectors/postgresql/target"),
+            Path.of("../../connectors/postgresql/target"),
+            Path.of("/app/plugins-seed"),
+        };
+        for (Path dir : searchDirs) {
+            Path found = findConnectorJar(dir);
+            if (found != null) {
+                try {
+                    Files.copy(found, dest, StandardCopyOption.REPLACE_EXISTING);
+                    log.info("Seeded bundled postgresql.jar from {}", found.toAbsolutePath());
+                    return;
+                } catch (IOException e) {
+                    log.warn("Could not seed bundled postgresql.jar: {}", e.getMessage());
+                }
+            }
+        }
+        log.warn("bundled/postgresql.jar missing — build connectors/postgresql and restart, or place the JAR manually");
+    }
+
+    /** First non `-sources`/`-javadoc` postgresql-connector-*.jar (or postgresql.jar) in dir, else null. */
+    private static Path findConnectorJar(Path dir) {
+        if (!Files.isDirectory(dir)) return null;
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "postgresql*.jar")) {
+            for (Path p : stream) {
+                String name = p.getFileName().toString();
+                if (!name.contains("-sources") && !name.contains("-javadoc")) {
+                    return p;
+                }
+            }
+        } catch (IOException ignored) {
+            // fall through to next candidate directory
+        }
+        return null;
+    }
+}

@@ -20,6 +20,14 @@ public class HotColdManager {
                                     Map<String, String> destConfig,
                                     List<JobPhaseEntity> phases,
                                     CommandChecker commandChecker) throws Exception {
+        return runJob(job, sourceConfig, destConfig, phases, commandChecker, null);
+    }
+
+    public List<PhaseResult> runJob(JobEntity job, Map<String, String> sourceConfig,
+                                    Map<String, String> destConfig,
+                                    List<JobPhaseEntity> phases,
+                                    CommandChecker commandChecker,
+                                    CheckpointSink checkpointSink) throws Exception {
         Instant now = Instant.now();
         Instant effectiveEnd = JobEntityHotCold.effectiveEnd(job, now);
         Instant hotBoundary = JobEntityHotCold.hotBoundary(job, effectiveEnd);
@@ -35,12 +43,10 @@ public class HotColdManager {
             phase.setStatus(PhaseStatus.RUNNING);
             PhaseChunkResult chunkResult = runPhaseChunks(
                 job, sourceConfig, destConfig, phase, effectiveEnd, hotBoundary,
-                minHours, maxHours, commandChecker);
+                minHours, maxHours, commandChecker, checkpointSink);
             BatchCopyEngine.BatchResult batchResult = chunkResult.batchResult();
             phase.setRowsProcessed(batchResult.written() + batchResult.skipped() + batchResult.updated());
             phase.setRowsTotal(batchResult.sourceCount());
-            // Only mark COMPLETED if every chunk ran; a mid-phase stop leaves the
-            // phase RUNNING rather than lying that it finished (no CANCELLED status exists).
             if (chunkResult.completed()) {
                 phase.setStatus(PhaseStatus.COMPLETED);
             }
@@ -51,10 +57,14 @@ public class HotColdManager {
 
     private PhaseChunkResult runPhaseChunks(JobEntity job, Map<String, String> sourceConfig,
             Map<String, String> destConfig, JobPhaseEntity phase, Instant effectiveEnd, Instant hotBoundary,
-            int minHours, int maxHours, CommandChecker commandChecker) throws Exception {
+            int minHours, int maxHours, CommandChecker commandChecker,
+            CheckpointSink checkpointSink) throws Exception {
         if (job.getTsColumn() == null) {
             BatchCopyEngine.BatchResult result = batchCopyEngine.copyPhase(job, sourceConfig, destConfig,
                 phase.getConflictMode(), List.of(), null, ROW_BATCH_SIZE);
+            if (checkpointSink != null) {
+                checkpointSink.save(phase.getPhase(), "full", null, result.written());
+            }
             return new PhaseChunkResult(result, true);
         }
 
@@ -64,6 +74,7 @@ public class HotColdManager {
 
         long sourceCount = 0, written = 0, skipped = 0, updated = 0;
         boolean completed = true;
+        int idx = 0;
         for (TimeChunkPlanner.TimeChunk chunk : chunks) {
             if (commandChecker.shouldStop()) {
                 completed = false;
@@ -76,6 +87,10 @@ public class HotColdManager {
             written += result.written();
             skipped += result.skipped();
             updated += result.updated();
+            if (checkpointSink != null) {
+                checkpointSink.save(phase.getPhase(), "chunk-" + idx, chunk.end().toString(), written);
+            }
+            idx++;
         }
         return new PhaseChunkResult(new BatchCopyEngine.BatchResult(sourceCount, written, skipped, updated), completed);
     }
@@ -104,6 +119,11 @@ public class HotColdManager {
     public interface CommandChecker {
         boolean isPaused();
         boolean shouldStop();
+    }
+
+    @FunctionalInterface
+    public interface CheckpointSink {
+        void save(PhaseType phase, String batchKey, String cursor, long rowsProcessed);
     }
 
     public record PhaseResult(PhaseType phase, BatchCopyEngine.BatchResult batchResult) {}

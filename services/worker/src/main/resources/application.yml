@@ -1,0 +1,38 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: migration-worker
+  datasource:
+    url: ${APP_DB_URL:jdbc:postgresql://localhost:5432/migration_app}
+    username: ${APP_DB_USER:migration}
+    password: ${APP_DB_PASSWORD:migration}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+app:
+  encryption-key: ${ENCRYPTION_KEY:dev-encryption-key-32bytes-long!!!!}
+  gspace-webhook-url: ${GSPACE_WEBHOOK_URL:}
+  worker-id: ${WORKER_ID:worker-1}
+  poll-interval-ms: 2000
+  plugins:
+    dir: ${PLUGINS_DIR:./data/plugins}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    com.migration: INFO

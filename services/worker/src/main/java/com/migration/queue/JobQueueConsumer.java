@@ -1,6 +1,7 @@
 package com.migration.queue;
 
-import com.migration.connectors.postgresql.PostgresqlConnectorPlugin;
+import com.migration.connectors.ConnectorPlugin;
+import com.migration.connectors.ConnectorPluginRegistry;
 import com.migration.connectors.WorkerConnectionService;
 import com.migration.engine.BatchCopyEngine;
 import com.migration.engine.HotColdManager;
@@ -31,10 +32,12 @@ public class JobQueueConsumer {
     private final WorkerJobRepository jobRepository;
     private final WorkerPhaseRepository phaseRepository;
     private final WorkerHeartbeatRepository heartbeatRepository;
+    private final WorkerCheckpointRepository checkpointRepository;
+    private final WorkerJobEventRepository eventRepository;
     private final WorkerConnectionService connectionService;
+    private final ConnectorPluginRegistry pluginRegistry;
     private final String workerId;
     private final String gspaceUrl;
-    private final HotColdManager hotColdManager;
     private final ReconciliationService reconciliationService;
     private final RestClient restClient = RestClient.create();
 
@@ -42,24 +45,29 @@ public class JobQueueConsumer {
                             WorkerJobRepository jobRepository,
                             WorkerPhaseRepository phaseRepository,
                             WorkerHeartbeatRepository heartbeatRepository,
+                            WorkerCheckpointRepository checkpointRepository,
+                            WorkerJobEventRepository eventRepository,
                             WorkerConnectionService connectionService,
+                            ConnectorPluginRegistry pluginRegistry,
                             @Value("${app.worker-id}") String workerId,
                             @Value("${app.gspace-webhook-url:}") String gspaceUrl) {
         this.redis = redis;
         this.jobRepository = jobRepository;
         this.phaseRepository = phaseRepository;
         this.heartbeatRepository = heartbeatRepository;
+        this.checkpointRepository = checkpointRepository;
+        this.eventRepository = eventRepository;
         this.connectionService = connectionService;
+        this.pluginRegistry = pluginRegistry;
         this.workerId = workerId;
         this.gspaceUrl = gspaceUrl;
-        var plugin = new PostgresqlConnectorPlugin();
-        this.hotColdManager = new HotColdManager(new BatchCopyEngine(plugin));
         this.reconciliationService = new ReconciliationService();
     }
 
     @Scheduled(fixedDelayString = "${app.poll-interval-ms:2000}")
     public void poll() {
         heartbeat();
+        reclaimStaleRunningJobs();
         String jobId = redis.opsForList().leftPop("job:queue");
         if (jobId == null) return;
         try {
@@ -69,22 +77,37 @@ public class JobQueueConsumer {
             jobRepository.findById(UUID.fromString(jobId)).ifPresent(job -> {
                 job.setStatus(JobStatus.FAILED);
                 jobRepository.save(job);
-                notifyGspace("Job *" + job.getName() + "* FAILED: " + e.getMessage());
+                writeEvent(job.getId(), "FAILED", e.getMessage());
+                notifyFailureCard(job, null, e.getClass().getSimpleName(), e.getMessage());
             });
         }
     }
 
-    // ponytail: no single long @Transactional here on purpose - each repository
-    // save below auto-commits in its own transaction (Spring Data JPA default),
-    // so status/progress becomes visible to readers as soon as each phase/step
-    // finishes instead of only at the very end of the job.
+    private void reclaimStaleRunningJobs() {
+        Instant cutoff = Instant.now().minus(2, java.time.temporal.ChronoUnit.MINUTES);
+        for (JobEntity job : jobRepository.findByStatus(JobStatus.RUNNING)) {
+            if (job.getUpdatedAt() != null && job.getUpdatedAt().isBefore(cutoff)) {
+                job.setStatus(JobStatus.FAILED);
+                jobRepository.save(job);
+                writeEvent(job.getId(), "FAILED", "Reclaimed stale RUNNING job (worker lost)");
+                notifyFailureCard(job, null, "StaleWorkerHeartbeat", "Reclaimed stale RUNNING job (worker lost)");
+            }
+        }
+    }
+
     void processJob(UUID jobId) throws Exception {
         JobEntity job = jobRepository.findById(jobId).orElseThrow();
         job.setStatus(JobStatus.RUNNING);
+        job.setUpdatedAt(Instant.now());
         jobRepository.save(job);
+        writeEvent(jobId, "STARTED", null);
         notifyGspace("Job *" + job.getName() + "* STARTED");
 
         List<JobPhaseEntity> phases = phaseRepository.findByJobId(jobId);
+        String pluginId = connectionService.pluginId(job.getSourceConnectionId());
+        ConnectorPlugin plugin = pluginRegistry.require(pluginId);
+        HotColdManager hotColdManager = new HotColdManager(new BatchCopyEngine(plugin));
+
         var sourceConfig = connectionService.loadConfig(job.getSourceConnectionId());
         var destConfig = connectionService.loadConfig(job.getDestConnectionId());
 
@@ -97,7 +120,21 @@ public class JobQueueConsumer {
             }
         };
 
-        var results = hotColdManager.runJob(job, sourceConfig, destConfig, phases, checker);
+        HotColdManager.CheckpointSink sink = (phase, batchKey, cursor, rows) -> {
+            JobCheckpointEntity cp = checkpointRepository
+                .findByJobIdAndPhaseAndBatchKey(jobId, phase, batchKey)
+                .orElseGet(JobCheckpointEntity::new);
+            cp.setJobId(jobId);
+            cp.setPhase(phase);
+            cp.setBatchKey(batchKey);
+            cp.setLastCursor(cursor);
+            cp.setRowsProcessed(rows);
+            cp.setCommittedAt(Instant.now());
+            checkpointRepository.save(cp);
+            writeEvent(jobId, "PROGRESS", phase + " " + batchKey + " rows=" + rows);
+        };
+
+        var results = hotColdManager.runJob(job, sourceConfig, destConfig, phases, checker, sink);
         phaseRepository.saveAll(phases);
 
         for (var result : results) {
@@ -109,15 +146,28 @@ public class JobQueueConsumer {
                 result.phase() == PhaseType.COLD);
             if (!recon.passed()) {
                 job.setStatus(JobStatus.FAILED);
+                job.setUpdatedAt(Instant.now());
                 jobRepository.save(job);
-                notifyGspace("Job *" + job.getName() + "* RECONCILIATION_FAILED");
+                writeEvent(jobId, "FAILED", "RECONCILIATION_FAILED");
+                notifyFailureCard(job, result.phase().name(), "ReconciliationFailure",
+                    "source/dest counts did not reconcile");
                 return;
             }
         }
 
         job.setStatus(JobStatus.COMPLETED);
+        job.setUpdatedAt(Instant.now());
         jobRepository.save(job);
+        writeEvent(jobId, "COMPLETED", null);
         notifyGspace("Job *" + job.getName() + "* COMPLETED");
+    }
+
+    private void writeEvent(UUID jobId, String type, String payload) {
+        WorkerJobEventEntity ev = new WorkerJobEventEntity();
+        ev.setJobId(jobId);
+        ev.setEventType(type);
+        ev.setPayload(payload == null ? null : "\"" + payload.replace("\"", "\\\"") + "\"");
+        eventRepository.save(ev);
     }
 
     private void heartbeat() {
@@ -128,6 +178,20 @@ public class JobQueueConsumer {
         });
         hb.setLastSeen(Instant.now());
         heartbeatRepository.save(hb);
+    }
+
+    private void notifyFailureCard(JobEntity job, String phase, String errorType, String message) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("*Migration alert*\n");
+        sb.append("• event: `FAILED`\n");
+        sb.append("• jobId: `").append(job.getId()).append("`\n");
+        sb.append("• job: *").append(job.getName()).append("*\n");
+        if (phase != null) sb.append("• phase: `").append(phase).append("`\n");
+        sb.append("• errorType: `").append(errorType).append("`\n");
+        sb.append("• message: ").append(message).append("\n");
+        sb.append("• worker: `").append(workerId).append("`\n");
+        sb.append("• at: ").append(Instant.now());
+        notifyGspace(sb.toString());
     }
 
     private void notifyGspace(String text) {
@@ -146,7 +210,9 @@ public class JobQueueConsumer {
 }
 
 @Repository
-interface WorkerJobRepository extends JpaRepository<JobEntity, UUID> {}
+interface WorkerJobRepository extends JpaRepository<JobEntity, UUID> {
+    List<JobEntity> findByStatus(JobStatus status);
+}
 
 @Repository
 interface WorkerPhaseRepository extends JpaRepository<JobPhaseEntity, UUID> {
@@ -155,6 +221,35 @@ interface WorkerPhaseRepository extends JpaRepository<JobPhaseEntity, UUID> {
 
 @Repository
 interface WorkerHeartbeatRepository extends JpaRepository<WorkerHeartbeatEntity, String> {}
+
+@Repository
+interface WorkerCheckpointRepository extends JpaRepository<JobCheckpointEntity, UUID> {
+    java.util.Optional<JobCheckpointEntity> findByJobIdAndPhaseAndBatchKey(UUID jobId, PhaseType phase, String batchKey);
+}
+
+@Repository
+interface WorkerJobEventRepository extends JpaRepository<WorkerJobEventEntity, UUID> {}
+
+@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "job_events")
+class WorkerJobEventEntity {
+    @jakarta.persistence.Id
+    @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
+    private UUID id;
+    @jakarta.persistence.Column(name = "job_id", nullable = false)
+    private UUID jobId;
+    @jakarta.persistence.Column(name = "event_type", nullable = false)
+    private String eventType;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @jakarta.persistence.Column(columnDefinition = "jsonb")
+    private String payload;
+    @jakarta.persistence.Column(name = "created_at")
+    private Instant createdAt = Instant.now();
+
+    public void setJobId(UUID jobId) { this.jobId = jobId; }
+    public void setEventType(String eventType) { this.eventType = eventType; }
+    public void setPayload(String payload) { this.payload = payload; }
+}
 
 @jakarta.persistence.Entity
 @jakarta.persistence.Table(name = "worker_heartbeats")

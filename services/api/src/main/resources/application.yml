@@ -1,0 +1,62 @@
+server:
+  port: 8080
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: migration-api
+  datasource:
+    url: ${APP_DB_URL:jdbc:postgresql://localhost:5432/migration_app}
+    username: ${APP_DB_USER:migration}
+    password: ${APP_DB_PASSWORD:migration}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope: openid, profile, email
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-secret-change-in-production-min-32-chars!!}
+    cookie-name: migration_token
+    expiry-hours: 24
+  encryption-key: ${ENCRYPTION_KEY:dev-encryption-key-32bytes-long!!!!}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  gspace-webhook-url: ${GSPACE_WEBHOOK_URL:}
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  config:
+    force-env: ${APP_CONFIG_FORCE_ENV:false}
+  auth:
+    enforced: ${AUTH_ENFORCED:true}
+    allowed-email-domain: ${ALLOWED_EMAIL_DOMAIN:}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+  worker:
+    metrics-url: ${WORKER_METRICS_URL:http://localhost:8081}
+  plugins:
+    dir: ${PLUGINS_DIR:./data/plugins}
+
+logging:
+  level:
+    com.migration: INFO
