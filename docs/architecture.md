@@ -56,6 +56,20 @@ flowchart TB
 6. Reconciliation compares source vs destination counts
 7. GSpace notifications on lifecycle events
 
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant API as API
+  participant R as Redis
+  participant W as Worker
+  participant DB as Target DB
+  U->>API: Start job
+  API->>R: Enqueue jobId
+  W->>R: Poll
+  W->>DB: Batch copy HOT/COLD
+  W->>API: Status updates via DB
+```
+
 ## Config Storage
 
 - **Env-only secrets:** JWT, encryption key, OAuth credentials

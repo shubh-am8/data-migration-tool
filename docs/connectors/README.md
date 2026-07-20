@@ -43,6 +43,17 @@ public interface ConnectorPlugin {
 
 Create `META-INF/services/com.migration.connector.ConnectorPlugin` with the plugin class FQN.
 
-See [Adding a Connector](adding-a-connector.md) for a step-by-step guide.
+## From Plugin to Job
+
+```mermaid
+flowchart LR
+  build[Build JAR] --> upload[Upload or install]
+  upload --> registry[Plugin registry reload]
+  registry --> conn[Connection with plugin id]
+  conn --> job[Job uses source + dest connections]
+  job --> worker[Worker batch copy via SPI]
+```
+
+See [Marketplace](../marketplace.md) for install/upload details and [Adding a Connector](adding-a-connector.md) for a step-by-step guide.
 
 [Back to Documentation Index](README.md) | [Project README](../README.md)

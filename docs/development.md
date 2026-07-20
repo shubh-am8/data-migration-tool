@@ -29,22 +29,22 @@ Open http://localhost:3000
 
 ## Dev Script Flow
 
-On every start, clears stale listeners on that mode's ports; for backend/all, also tears down this project's Docker infra before starting.
+On every start, `prepare_dev_stack` clears stale listeners on that mode's ports; for backend/all, it also tears down this project's Docker infra before starting.
 
 ```mermaid
 flowchart TD
   start[run-local-dev.sh] --> parse[Parse flags]
-  parse --> load[Load .env]
-  load --> prepare[prepare_dev_stack]
+  parse --> env[Load .env + ensure_dev_dir]
+  env --> prepare[prepare_dev_stack clear ports]
   prepare --> mode{Mode?}
-  mode -->|frontend| fe[npm run dev]
-  mode -->|backend| infra1[Docker: appdb + redis]
-  mode -->|all| infra1
-  infra1 --> api[mvn spring-boot:run api]
-  api --> worker[mvn spring-boot:run worker]
-  worker --> fe2[npm run dev]
-  mode -->|backend| wait[Wait for signals]
-  fe2 --> wait
+  mode -->|frontend| fe[start_frontend :3000]
+  mode -->|backend or all| infra[start_infra Postgres + Redis]
+  infra --> build[build_backend seed bundled JAR]
+  build --> api[start_api :8080]
+  api --> worker[start_worker :8081]
+  worker --> allCheck{Mode = all?}
+  allCheck -->|yes| fe
+  allCheck -->|no| wait[Wait for Ctrl+C]
   fe --> wait
 ```
 

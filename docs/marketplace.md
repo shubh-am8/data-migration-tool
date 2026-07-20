@@ -15,4 +15,19 @@ Creating a connection requires an **installed** (enabled + loaded) connector. If
 
 Future marketplace item types can use `kind` (default `CONNECTOR`).
 
+## Install and Upload Flow
+
+```mermaid
+flowchart TD
+  upload[Admin POST /api/marketplace/upload] --> validate[Validate ConnectorPlugin SPI]
+  validate --> write[Write installed/id.jar + enable]
+  bundled[Bundled JAR in data/plugins/bundled] --> install[Install from Marketplace UI]
+  install --> copy[Copy bundled to installed]
+  copy --> reload[Enable plugin + reload registry]
+  write --> reload
+  reload --> conn[Create connection]
+  conn --> job[Create job and Start]
+  job --> queue[API enqueues jobId to Redis]
+```
+
 See [Adding a Connector](connectors/adding-a-connector.md).

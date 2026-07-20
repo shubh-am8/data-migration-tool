@@ -15,12 +15,12 @@ function LoginContent() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Data Migration Platform</CardTitle>
-          <CardDescription>Sign in with your company Google account</CardDescription>
+          <CardDescription>Sign in with your organization Google account</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {error === "domain" && (
             <p className="text-sm text-destructive">
-              Only company-domain Google accounts are allowed.
+              Only organization-domain Google accounts are allowed.
             </p>
           )}
           {error === "oauth" && (

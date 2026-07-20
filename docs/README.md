@@ -1,21 +1,21 @@
-# Documentation Index
+# Documentation
 
-Complete documentation for the Data Migration Platform.
+Open-source guides for the Data Migration Platform.
 
 ## Getting Started
 
-- [Development Guide](development.md) — `./run-local-dev.sh`, flags, troubleshooting
-- [Deployment Guide](deployment.md) — single Docker image, production compose
-- [Configuration Guide](configuration.md) — env vs DB precedence, auth
+1. [Development Guide](development.md) — run locally with `./run-local-dev.sh`
+2. [Configuration Guide](configuration.md) — auth, env vars, dashboard settings
+3. [Deployment Guide](deployment.md) — Docker image and Kubernetes
 
 ## Architecture
 
-- [Architecture Overview](architecture.md) — system diagram, modules, data flow
+- [Architecture Overview](architecture.md) — system diagram, modules, job pipeline
 
-## Features
+## Connectors & Marketplace
 
-- [Connector Marketplace](marketplace.md) — catalog, UI, enabling plugins
-- [Connectors](connectors/README.md) — plugin SPI overview
+- [Marketplace](marketplace.md) — install, upload, and manage connector plugins
+- [Connectors](connectors/README.md) — plugin SPI and lifecycle
 - [Adding a Connector](connectors/adding-a-connector.md) — step-by-step guide
 
 ## Components
@@ -24,6 +24,10 @@ Complete documentation for the Data Migration Platform.
 - [Worker Service](components/worker.md)
 - [Frontend Dashboard](components/frontend.md)
 - [Connector SDK](components/connector-sdk.md)
+
+## Contribute
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for prerequisites, PR checklist, and code conventions.
 
 ## Release Notes
 
