@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { EmailConfirmDialog } from "@/components/shared/EmailConfirmDialog";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import type { PageResponse } from "@/components/shared/PaginationBar";
@@ -27,6 +28,11 @@ interface AdminUser {
   admin: boolean;
 }
 
+type Pending =
+  | { type: "revoke"; user: AdminUser }
+  | { type: "delete"; user: AdminUser }
+  | null;
+
 function initials(name: string, email: string) {
   const base = (name || email || "?").trim();
   const parts = base.split(/\s+/).filter(Boolean);
@@ -39,6 +45,7 @@ export default function UsersPage() {
   const [size, setSize] = useState(20);
   const [data, setData] = useState<PageResponse<AdminUser> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState<Pending>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -52,24 +59,22 @@ export default function UsersPage() {
     load();
   }, [load]);
 
-  async function revoke(id: string) {
+  async function handleConfirm() {
+    if (!pending) return;
+    const { type, user } = pending;
     try {
-      await apiFetch(`/api/admin/users/${id}/revoke`, { method: "POST" });
-      notify.success("Login revoked");
+      if (type === "revoke") {
+        await apiFetch(`/api/admin/users/${user.id}/revoke`, { method: "POST" });
+        notify.success("Login revoked");
+      } else {
+        await apiFetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+        notify.success("User deleted");
+      }
+      setPending(null);
       load();
     } catch (e) {
-      notify.error("Revoke failed", e instanceof Error ? e.message : undefined);
-    }
-  }
-
-  async function remove(id: string) {
-    if (!confirm("Delete this user permanently?")) return;
-    try {
-      await apiFetch(`/api/admin/users/${id}`, { method: "DELETE" });
-      notify.success("User deleted");
-      load();
-    } catch (e) {
-      notify.error("Delete failed", e instanceof Error ? e.message : undefined);
+      const action = type === "revoke" ? "Revoke" : "Delete";
+      notify.error(`${action} failed`, e instanceof Error ? e.message : undefined);
     }
   }
 
@@ -131,10 +136,18 @@ export default function UsersPage() {
       className: "text-right",
       cell: (u) => (
         <div className="flex justify-end gap-2">
-          <Button variant="warning" size="sm" onClick={() => revoke(u.id)}>
+          <Button
+            variant="warning"
+            size="sm"
+            onClick={() => setPending({ type: "revoke", user: u })}
+          >
             Revoke
           </Button>
-          <Button variant="danger" size="sm" onClick={() => remove(u.id)}>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setPending({ type: "delete", user: u })}
+          >
             Delete
           </Button>
         </div>
@@ -161,6 +174,24 @@ export default function UsersPage() {
           setPage(0);
         }}
       />
+      {pending ? (
+        <EmailConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setPending(null);
+          }}
+          title={pending.type === "revoke" ? "Revoke login" : "Delete user"}
+          description={
+            pending.type === "revoke"
+              ? "This user will be signed out and unable to log in until an admin restores access."
+              : "This permanently removes the user and cannot be undone."
+          }
+          confirmLabel={pending.type === "revoke" ? "Revoke" : "Delete"}
+          confirmVariant={pending.type === "revoke" ? "warning" : "danger"}
+          subject={pending.user}
+          onConfirm={handleConfirm}
+        />
+      ) : null}
     </AppShell>
   );
 }
