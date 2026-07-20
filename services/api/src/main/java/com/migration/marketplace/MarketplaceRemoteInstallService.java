@@ -25,6 +25,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -40,6 +42,14 @@ import java.util.zip.ZipInputStream;
 @Service
 public class MarketplaceRemoteInstallService {
     private static final Logger log = LoggerFactory.getLogger(MarketplaceRemoteInstallService.class);
+
+    /** Hosts GitHub may redirect release asset downloads to. */
+    static final Set<String> ALLOWED_DOWNLOAD_HOSTS = Set.of(
+        "api.github.com",
+        "github.com",
+        "objects.githubusercontent.com",
+        "release-assets.githubusercontent.com"
+    );
 
     public sealed interface InstallResult {
         record Ok(String id, String version) implements InstallResult {}
@@ -122,7 +132,20 @@ public class MarketplaceRemoteInstallService {
         return getBytes(downloadUrl);
     }
 
+    /** @throws SecurityException if {@code url} is not HTTPS or its host is not allowlisted. */
+    static void validateDownloadUrl(String url) {
+        URI uri = URI.create(url);
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new SecurityException("Marketplace download URL must use HTTPS: " + url);
+        }
+        String host = uri.getHost();
+        if (host == null || !ALLOWED_DOWNLOAD_HOSTS.contains(host.toLowerCase(Locale.ROOT))) {
+            throw new SecurityException("Marketplace download host not allowlisted: " + host);
+        }
+    }
+
     private JsonNode getJson(String url) throws IOException {
+        validateDownloadUrl(url);
         HttpRequest request = HttpRequest.newBuilder(URI.create(url))
             .header("Accept", "application/vnd.github+json")
             .timeout(Duration.ofSeconds(15))
@@ -136,6 +159,7 @@ public class MarketplaceRemoteInstallService {
     }
 
     private byte[] getBytes(String url) throws IOException {
+        validateDownloadUrl(url);
         HttpRequest request = HttpRequest.newBuilder(URI.create(url))
             .timeout(Duration.ofSeconds(30))
             .GET()

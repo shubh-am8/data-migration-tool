@@ -46,4 +46,11 @@ class MarketplaceCatalogTest {
         assertTrue(catalog.find("lab-devtools").isPresent());
         assertEquals("TOOL", catalog.find("lab-devtools").orElseThrow().kind());
     }
+
+    @Test
+    void loadsPackagedClasspathCatalogWhenFileMissing() throws IOException {
+        MarketplaceCatalog catalog = new MarketplaceCatalog("/nonexistent/marketplace/catalog.json");
+        assertTrue(catalog.find("postgresql").isPresent());
+        assertTrue(catalog.find("lab-devtools").isPresent());
+    }
 }

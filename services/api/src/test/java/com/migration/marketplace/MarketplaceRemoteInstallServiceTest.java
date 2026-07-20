@@ -4,6 +4,8 @@ import com.migration.connectors.ConnectorPluginRegistry;
 import com.migration.connectors.PluginDirectoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
@@ -52,6 +54,33 @@ class MarketplaceRemoteInstallServiceTest {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         String hex = HexFormat.of().formatHex(md.digest(data));
         MarketplaceRemoteInstallService.verifySha256(data, hex);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "https://api.github.com/repos/owner/repo/releases/latest",
+        "https://github.com/owner/repo/releases/download/v1.0.0/thing.jar",
+        "https://objects.githubusercontent.com/github-production-release-asset-2e65be/abc",
+        "https://release-assets.githubusercontent.com/github-production-release-asset-2e65be/abc"
+    })
+    void validateDownloadUrlAcceptsAllowlistedGitHubHosts(String url) {
+        MarketplaceRemoteInstallService.validateDownloadUrl(url);
+    }
+
+    @Test
+    void validateDownloadUrlRejectsNonHttps() {
+        SecurityException ex = assertThrows(SecurityException.class,
+            () -> MarketplaceRemoteInstallService.validateDownloadUrl(
+                "http://api.github.com/repos/owner/repo/releases/latest"));
+        assertTrue(ex.getMessage().contains("HTTPS"));
+    }
+
+    @Test
+    void validateDownloadUrlRejectsDisallowedHost() {
+        SecurityException ex = assertThrows(SecurityException.class,
+            () -> MarketplaceRemoteInstallService.validateDownloadUrl(
+                "https://evil.example.com/malware.jar"));
+        assertTrue(ex.getMessage().contains("not allowlisted"));
     }
 
     @Test
