@@ -1,4 +1,4 @@
-import { isPublicPath, shouldRedirectToLogin } from "./auth-gate";
+import { isPublicPath, shouldRedirectAuthenticatedToApp, shouldRedirectToLogin } from "./auth-gate";
 
 describe("auth-gate", () => {
   it("treats login and oauth as public", () => {
@@ -18,5 +18,11 @@ describe("auth-gate", () => {
 
   it("never redirects public paths even without token", () => {
     expect(shouldRedirectToLogin("/login", false)).toBe(false);
+  });
+
+  it("sends authenticated users away from login to the app", () => {
+    expect(shouldRedirectAuthenticatedToApp("/login", true)).toBe(true);
+    expect(shouldRedirectAuthenticatedToApp("/login", false)).toBe(false);
+    expect(shouldRedirectAuthenticatedToApp("/dashboard", true)).toBe(false);
   });
 });
