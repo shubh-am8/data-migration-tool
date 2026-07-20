@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 export interface ConfigFieldDef {
   key: string;
@@ -18,7 +19,8 @@ export type ConnectionFormValues = Record<string, string>;
 interface ConnectionFormProps {
   fields: ConfigFieldDef[];
   initial?: Partial<ConnectionFormValues>;
-  onSubmit: (values: ConnectionFormValues) => void;
+  initialSandbox?: boolean;
+  onSubmit: (values: ConnectionFormValues, sandbox: boolean) => void;
   onTest?: (values: ConnectionFormValues) => Promise<void>;
 }
 
@@ -39,8 +41,9 @@ function buildDefaults(fields: ConfigFieldDef[], initial?: Partial<ConnectionFor
  * ponytail: the SDK `ConfigField` has no enum `options` yet, so `type: "select"` (e.g. sslmode)
  * renders as free text. Upgrade path: add `options: string[]` to ConfigField and render a Select.
  */
-export function ConnectionForm({ fields, initial, onSubmit, onTest }: ConnectionFormProps) {
+export function ConnectionForm({ fields, initial, initialSandbox, onSubmit, onTest }: ConnectionFormProps) {
   const [values, setValues] = useState<ConnectionFormValues>(() => buildDefaults(fields, initial));
+  const [sandbox, setSandbox] = useState(initialSandbox ?? false);
   const [testing, setTesting] = useState(false);
 
   function update(key: string, value: string) {
@@ -89,6 +92,13 @@ export function ConnectionForm({ fields, initial, onSubmit, onTest }: Connection
           onChange={(e) => update("maxPoolSize", e.target.value)}
         />
       </Field>
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldLabel htmlFor="sandbox">Sandbox connection</FieldLabel>
+          <FieldDescription>Required for Test-mode migration jobs.</FieldDescription>
+        </FieldContent>
+        <Switch id="sandbox" checked={sandbox} onCheckedChange={(checked) => setSandbox(Boolean(checked))} />
+      </Field>
       <div className="flex gap-2">
         {onTest && (
           <Button
@@ -107,7 +117,7 @@ export function ConnectionForm({ fields, initial, onSubmit, onTest }: Connection
             {testing ? "Testing…" : "Test Connection"}
           </Button>
         )}
-        <Button type="button" onClick={() => onSubmit(values)}>
+        <Button type="button" onClick={() => onSubmit(values, sandbox)}>
           Save
         </Button>
       </div>

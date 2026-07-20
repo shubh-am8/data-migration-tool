@@ -2,6 +2,7 @@ package com.migration.connectors;
 
 import com.migration.auth.UserService;
 import com.migration.marketplace.MarketplaceCatalog;
+import com.migration.marketplace.MarketplaceInstallRepository;
 import com.migration.marketplace.MarketplaceRemoteInstallService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -11,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,7 @@ public class MarketplaceController {
     private final UserService userService;
     private final MarketplaceCatalog marketplaceCatalog;
     private final MarketplaceRemoteInstallService remoteInstallService;
+    private final MarketplaceInstallRepository marketplaceInstallRepository;
 
     public MarketplaceController(ConnectorPluginRepository pluginRepository,
                                  ConnectorPluginRegistry pluginRegistry,
@@ -33,7 +36,8 @@ public class MarketplaceController {
                                  PluginDirectoryService pluginDirectory,
                                  UserService userService,
                                  MarketplaceCatalog marketplaceCatalog,
-                                 MarketplaceRemoteInstallService remoteInstallService) {
+                                 MarketplaceRemoteInstallService remoteInstallService,
+                                 MarketplaceInstallRepository marketplaceInstallRepository) {
         this.pluginRepository = pluginRepository;
         this.pluginRegistry = pluginRegistry;
         this.connectionRepository = connectionRepository;
@@ -41,11 +45,33 @@ public class MarketplaceController {
         this.userService = userService;
         this.marketplaceCatalog = marketplaceCatalog;
         this.remoteInstallService = remoteInstallService;
+        this.marketplaceInstallRepository = marketplaceInstallRepository;
     }
 
+    /** Connector rows come from the catalog table (via {@code ConnectorPluginRepository}); TOOL
+     * items (e.g. lab-devtools) have no such row, so they're merged in from the catalog here. */
     @GetMapping
     public List<Map<String, Object>> list() {
-        return pluginRepository.findAll().stream().map(this::toDto).toList();
+        List<Map<String, Object>> result = new ArrayList<>(
+            pluginRepository.findAll().stream().map(this::toDto).toList());
+        marketplaceCatalog.all().stream()
+            .filter(item -> "TOOL".equals(item.kind()))
+            .map(this::toToolDto)
+            .forEach(result::add);
+        return result;
+    }
+
+    private Map<String, Object> toToolDto(MarketplaceCatalog.CatalogItem item) {
+        boolean installed = marketplaceInstallRepository.existsById(item.id());
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", item.id());
+        dto.put("name", item.name());
+        dto.put("description", item.description());
+        dto.put("version", item.version());
+        dto.put("kind", item.kind());
+        dto.put("installed", installed);
+        dto.put("enabled", installed);
+        return dto;
     }
 
     @PostMapping("/{pluginId}/install")

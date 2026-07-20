@@ -7,6 +7,7 @@ interface ConnectorCardProps {
   name: string;
   description: string;
   version: string;
+  kind?: string;
   installed?: boolean;
   onClasspath?: boolean;
   onInstall?: () => void;
@@ -19,18 +20,21 @@ export function ConnectorCard({
   name,
   description,
   version,
+  kind = "CONNECTOR",
   installed,
   onClasspath,
   onInstall,
   onUninstall,
   onAdd,
 }: ConnectorCardProps) {
+  const isTool = kind === "TOOL";
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle>{name}</CardTitle>
           <div className="flex gap-1">
+            <Badge variant="outline" className="capitalize">{kind.toLowerCase()}</Badge>
             <Badge variant="secondary">{version}</Badge>
             {installed ? <Badge>Installed</Badge> : <Badge variant="outline">Available</Badge>}
           </div>
@@ -49,12 +53,12 @@ export function ConnectorCard({
             Install
           </Button>
         )}
-        {installed && onUninstall && (
+        {installed && !isTool && onUninstall && (
           <Button variant="warning" onClick={onUninstall}>
             Uninstall
           </Button>
         )}
-        {installed && (
+        {installed && !isTool && (
           <Button onClick={onAdd}>Add Connection</Button>
         )}
       </CardFooter>

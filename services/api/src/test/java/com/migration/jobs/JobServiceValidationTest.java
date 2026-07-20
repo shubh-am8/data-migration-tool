@@ -127,6 +127,24 @@ class JobServiceValidationTest {
         assertDoesNotThrow(() -> service.validateJob(job, Map.of()));
     }
 
+    @Test
+    void applyBodySerializesConfigJsonMapToJsonString() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        service.applyBody(job, Map.of("configJson", Map.of("kind", "SIMULATE", "scenario", "COLD_ONLY")));
+        assertTrue(SimulationConfig.isSimulation(job.getConfigJson()));
+        assertEquals("COLD_ONLY", SimulationConfig.parse(job.getConfigJson()).scenario());
+    }
+
+    @Test
+    void applyBodyLeavesConfigJsonUntouchedWhenKeyAbsent() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        String before = job.getConfigJson();
+        service.applyBody(job, Map.of("name", "job-1"));
+        assertEquals(before, job.getConfigJson());
+    }
+
     private static JobService newServiceWithThreadBounds() {
         AppConfigService appConfigService = mock(AppConfigService.class);
         when(appConfigService.get("min_threads_per_job")).thenReturn("1");

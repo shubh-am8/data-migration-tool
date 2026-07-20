@@ -256,7 +256,7 @@ public class JobService {
     }
 
     @SuppressWarnings("unchecked")
-    private void applyBody(JobEntity job, Map<String, Object> body) {
+    void applyBody(JobEntity job, Map<String, Object> body) {
         if (body.containsKey("name")) job.setName((String) body.get("name"));
         if (body.containsKey("sourceConnectionId")) job.setSourceConnectionId(UUID.fromString((String) body.get("sourceConnectionId")));
         if (body.containsKey("destConnectionId")) job.setDestConnectionId(UUID.fromString((String) body.get("destConnectionId")));
@@ -278,6 +278,14 @@ public class JobService {
         if (body.containsKey("filters")) {
             try {
                 job.setFiltersJson(objectMapper.writeValueAsString(body.get("filters")));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (body.containsKey("configJson")) {
+            Object configJson = body.get("configJson");
+            try {
+                job.setConfigJson(configJson == null ? "{}" : objectMapper.writeValueAsString(configJson));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
