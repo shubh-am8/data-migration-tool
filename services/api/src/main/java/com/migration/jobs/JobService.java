@@ -236,12 +236,7 @@ public class JobService {
     }
 
     private boolean isSimulation(JobEntity job) {
-        try {
-            Map<String, Object> config = objectMapper.readValue(job.getConfigJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
-            return "SIMULATE".equals(config.get("kind"));
-        } catch (Exception e) {
-            return false;
-        }
+        return SimulationConfig.isSimulation(job.getConfigJson());
     }
 
     static void validateRangeChunks(JobEntity job) {

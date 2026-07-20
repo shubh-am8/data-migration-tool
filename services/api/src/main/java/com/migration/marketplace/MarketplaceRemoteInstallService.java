@@ -56,9 +56,13 @@ public class MarketplaceRemoteInstallService {
         record Failed(String message) implements InstallResult {}
     }
 
+    /** Not shipped in the catalog under any other kind — the only TOOL that owns lab DDL today. */
+    private static final String LAB_DEVTOOLS_ID = "lab-devtools";
+
     private final MarketplaceCatalog catalog;
     private final PluginDirectoryService pluginDirectory;
     private final MarketplaceInstallRepository installRepository;
+    private final LabDevtoolsInstaller labDevtoolsInstaller;
     private final String mode;
     private final Path localDir;
     private final String repo;
@@ -69,6 +73,7 @@ public class MarketplaceRemoteInstallService {
         MarketplaceCatalog catalog,
         PluginDirectoryService pluginDirectory,
         MarketplaceInstallRepository installRepository,
+        LabDevtoolsInstaller labDevtoolsInstaller,
         @Value("${app.marketplace.mode:local}") String mode,
         @Value("${app.marketplace.local-dir:../../marketplace/dist}") String localDir,
         @Value("${app.marketplace.repo:OWNER/data-migration-tool}") String repo
@@ -76,6 +81,7 @@ public class MarketplaceRemoteInstallService {
         this.catalog = catalog;
         this.pluginDirectory = pluginDirectory;
         this.installRepository = installRepository;
+        this.labDevtoolsInstaller = labDevtoolsInstaller;
         this.mode = mode;
         this.localDir = Path.of(localDir).toAbsolutePath().normalize();
         this.repo = repo;
@@ -93,7 +99,12 @@ public class MarketplaceRemoteInstallService {
             verifySha256(bytes, item.sha256());
             switch (item.kind()) {
                 case "CONNECTOR" -> installConnectorBytes(item.id(), bytes);
-                case "TOOL" -> installToolZip(item.id(), bytes);
+                case "TOOL" -> {
+                    installToolZip(item.id(), bytes);
+                    if (LAB_DEVTOOLS_ID.equals(item.id())) {
+                        labDevtoolsInstaller.apply(pluginDirectory.toolsDir().resolve(item.id()));
+                    }
+                }
                 default -> throw new IllegalArgumentException("Unsupported marketplace kind: " + item.kind());
             }
             recordInstall(item);

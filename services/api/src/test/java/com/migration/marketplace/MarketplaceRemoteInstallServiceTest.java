@@ -124,17 +124,64 @@ class MarketplaceRemoteInstallServiceTest {
         MarketplaceCatalog catalog = mock(MarketplaceCatalog.class);
         when(catalog.find("nope")).thenReturn(Optional.empty());
         MarketplaceRemoteInstallService service = new MarketplaceRemoteInstallService(
-            catalog, pluginDirectory, installRepository, "local", tempDir.resolve("dist").toString(),
-            "owner/repo");
+            catalog, pluginDirectory, installRepository, mock(LabDevtoolsInstaller.class),
+            "local", tempDir.resolve("dist").toString(), "owner/repo");
 
         var result = service.install("nope");
         assertInstanceOf(MarketplaceRemoteInstallService.InstallResult.Failed.class, result);
     }
 
+    @Test
+    void installOfLabDevtoolsAppliesSqlToExtractedToolDir() throws Exception {
+        Path localDir = tempDir.resolve("dist");
+        Files.createDirectories(localDir);
+        Files.write(localDir.resolve("lab-devtools-0.1.0.zip"), zipOf("plugin.json", "{}"));
+        MarketplaceCatalog catalog = mock(MarketplaceCatalog.class);
+        var item = new MarketplaceCatalog.CatalogItem(
+            "lab-devtools", "TOOL", "Lab Dev Tools", "desc", "0.1.0", "lab-devtools-0.1.0.zip",
+            sha256Of(Files.readAllBytes(localDir.resolve("lab-devtools-0.1.0.zip"))));
+        when(catalog.find("lab-devtools")).thenReturn(Optional.of(item));
+        LabDevtoolsInstaller installer = mock(LabDevtoolsInstaller.class);
+        MarketplaceRemoteInstallService service = new MarketplaceRemoteInstallService(
+            catalog, pluginDirectory, installRepository, installer,
+            "local", localDir.toString(), "owner/repo");
+
+        var result = service.install("lab-devtools");
+
+        assertInstanceOf(MarketplaceRemoteInstallService.InstallResult.Ok.class, result);
+        verify(installer).apply(pluginDirectory.toolsDir().resolve("lab-devtools"));
+    }
+
+    @Test
+    void installOfOtherToolsDoesNotInvokeLabDevtoolsInstaller() throws Exception {
+        Path localDir = tempDir.resolve("dist");
+        Files.createDirectories(localDir);
+        Files.write(localDir.resolve("other-tool-0.1.0.zip"), zipOf("plugin.json", "{}"));
+        MarketplaceCatalog catalog = mock(MarketplaceCatalog.class);
+        var item = new MarketplaceCatalog.CatalogItem(
+            "other-tool", "TOOL", "Other Tool", "desc", "0.1.0", "other-tool-0.1.0.zip",
+            sha256Of(Files.readAllBytes(localDir.resolve("other-tool-0.1.0.zip"))));
+        when(catalog.find("other-tool")).thenReturn(Optional.of(item));
+        LabDevtoolsInstaller installer = mock(LabDevtoolsInstaller.class);
+        MarketplaceRemoteInstallService service = new MarketplaceRemoteInstallService(
+            catalog, pluginDirectory, installRepository, installer,
+            "local", localDir.toString(), "owner/repo");
+
+        var result = service.install("other-tool");
+
+        assertInstanceOf(MarketplaceRemoteInstallService.InstallResult.Ok.class, result);
+        verifyNoInteractions(installer);
+    }
+
+    private static String sha256Of(byte[] data) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        return HexFormat.of().formatHex(md.digest(data));
+    }
+
     private MarketplaceRemoteInstallService newService(Path localDir) {
         return new MarketplaceRemoteInstallService(
             mock(MarketplaceCatalog.class), pluginDirectory, installRepository,
-            "local", localDir.toString(), "owner/repo");
+            mock(LabDevtoolsInstaller.class), "local", localDir.toString(), "owner/repo");
     }
 
     private static byte[] zipOf(String entryName, String content) throws IOException {
