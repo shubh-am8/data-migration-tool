@@ -55,9 +55,11 @@ public class LabDevtoolsInstaller {
     public void cleanup() throws SQLException {
         try (Connection conn = DriverManager.getConnection(url, user, password);
              Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP SCHEMA IF EXISTS test_destination CASCADE");
+            stmt.execute("DROP SCHEMA IF EXISTS test_source CASCADE");
             stmt.execute("DROP SCHEMA IF EXISTS test CASCADE");
             stmt.execute("DROP SCHEMA IF EXISTS app CASCADE");
-            log.info("Dropped lab-devtools schemas app and test from lab DB");
+            log.info("Dropped lab-devtools schemas from lab DB");
         }
     }
 

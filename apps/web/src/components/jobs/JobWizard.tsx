@@ -27,6 +27,8 @@ import {
 } from "@/lib/job-wizard-validation";
 import {
   LAB_SCHEMAS,
+  LAB_DEST_SCHEMA,
+  LAB_SOURCE_SCHEMA,
   LAB_SIMULATION_TABLES,
   SIMULATION_SCENARIO_OPTIONS,
   buildSimulationConfigJson,
@@ -570,11 +572,15 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       <TabsContent value="2" className="flex flex-col gap-4 pt-4">
         {runMode === "TEST" && (
           <Alert>
-            <AlertTitle>Lab database schemas</AlertTitle>
+            <AlertTitle>Lab source schema ({LAB_SOURCE_SCHEMA})</AlertTitle>
             <AlertDescription>
-              TEST jobs use the lab playground (<strong>app</strong> and <strong>test</strong> on{" "}
-              <code className="text-xs">migration_lab</code>). Install Lab Dev Tools from the marketplace if these
-              schemas are empty. Use sandbox connections pointing at the lab database for migrations.
+              TEST jobs read from <strong>{LAB_SOURCE_SCHEMA}</strong> on{" "}
+              <code className="text-xs">migration_lab</code>. A matching table is auto-created in{" "}
+              <strong>{LAB_DEST_SCHEMA}</strong> when you save the job. View tables in{" "}
+              <a href="/lab" className="text-sky-600 underline">
+                Lab Playground
+              </a>
+              .
             </AlertDescription>
           </Alert>
         )}
@@ -582,9 +588,9 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           <Alert>
             <AlertTitle>Sample data seeding enabled</AlertTitle>
             <AlertDescription>
-              Pick the same schema and table you will migrate. Suggested lab tables:{" "}
-              <strong>orders_cold</strong>, <strong>orders_hot_cold</strong> in schemas{" "}
-              <strong>app</strong> or <strong>test</strong>.
+              Pick the same table you will migrate. Suggested lab tables:{" "}
+              <strong>orders_cold</strong>, <strong>orders_hot_cold</strong> in{" "}
+              <strong>{LAB_SOURCE_SCHEMA}</strong>.
             </AlertDescription>
           </Alert>
         )}

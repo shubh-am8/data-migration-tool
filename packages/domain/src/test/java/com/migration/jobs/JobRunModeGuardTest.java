@@ -9,39 +9,41 @@ class JobRunModeGuardTest {
     @Test
     void rejectsSimulationWhenModeIsNotTest() {
         var ex = assertThrows(IllegalArgumentException.class,
-            () -> JobRunModeGuard.validate(JobRunMode.PRODUCTION, true, true, "app", true));
+            () -> JobRunModeGuard.validate(JobRunMode.PRODUCTION, true, true, LabSchemas.SOURCE, true));
         assertTrue(ex.getMessage().contains("simulation requires runMode=TEST"));
     }
 
     @Test
     void rejectsTestModeWithNonSandboxSource() {
         var ex = assertThrows(IllegalArgumentException.class,
-            () -> JobRunModeGuard.validate(JobRunMode.TEST, false, true, "app", false));
+            () -> JobRunModeGuard.validate(JobRunMode.TEST, false, true, LabSchemas.SOURCE, false));
         assertTrue(ex.getMessage().contains("require sandbox"));
     }
 
     @Test
     void rejectsTestModeWithNonSandboxDest() {
         var ex = assertThrows(IllegalArgumentException.class,
-            () -> JobRunModeGuard.validate(JobRunMode.TEST, true, false, "app", false));
+            () -> JobRunModeGuard.validate(JobRunMode.TEST, true, false, LabSchemas.SOURCE, false));
         assertTrue(ex.getMessage().contains("require sandbox"));
     }
 
     @Test
-    void rejectsTestModeWithSchemaOutsideAppOrTest() {
+    void rejectsTestModeWithSchemaOutsideTestSource() {
         var ex = assertThrows(IllegalArgumentException.class,
             () -> JobRunModeGuard.validate(JobRunMode.TEST, true, true, "public", false));
-        assertTrue(ex.getMessage().contains("schema app or test"));
+        assertTrue(ex.getMessage().contains(LabSchemas.SOURCE));
     }
 
     @Test
-    void acceptsTestModeWithSandboxConnectionsAndAppSchema() {
-        assertDoesNotThrow(() -> JobRunModeGuard.validate(JobRunMode.TEST, true, true, "app", false));
+    void rejectsTestModeWithDestinationSchemaAsSource() {
+        var ex = assertThrows(IllegalArgumentException.class,
+            () -> JobRunModeGuard.validate(JobRunMode.TEST, true, true, LabSchemas.DESTINATION, false));
+        assertTrue(ex.getMessage().contains(LabSchemas.SOURCE));
     }
 
     @Test
-    void acceptsTestModeWithSandboxConnectionsAndTestSchema() {
-        assertDoesNotThrow(() -> JobRunModeGuard.validate(JobRunMode.TEST, true, true, "test", false));
+    void acceptsTestModeWithTestSourceSchema() {
+        assertDoesNotThrow(() -> JobRunModeGuard.validate(JobRunMode.TEST, true, true, LabSchemas.SOURCE, false));
     }
 
     @Test
@@ -50,19 +52,19 @@ class JobRunModeGuardTest {
     }
 
     @Test
-    void rejectsProductionModeTargetingTestSchema() {
+    void rejectsProductionModeTargetingLabSchemas() {
         var ex = assertThrows(IllegalArgumentException.class,
-            () -> JobRunModeGuard.validate(JobRunMode.PRODUCTION, false, false, "test", false));
-        assertTrue(ex.getMessage().contains("cannot target schema test"));
+            () -> JobRunModeGuard.validate(JobRunMode.PRODUCTION, false, false, LabSchemas.DESTINATION, false));
+        assertTrue(ex.getMessage().contains("cannot target lab schemas"));
     }
 
     @Test
-    void acceptsProductionModeWithNonSandboxConnectionsAndOtherSchema() {
+    void acceptsProductionModeWithNonLabSchema() {
         assertDoesNotThrow(() -> JobRunModeGuard.validate(JobRunMode.PRODUCTION, false, false, "public", false));
     }
 
     @Test
     void acceptsSimulationInTestMode() {
-        assertDoesNotThrow(() -> JobRunModeGuard.validate(JobRunMode.TEST, true, true, "app", true));
+        assertDoesNotThrow(() -> JobRunModeGuard.validate(JobRunMode.TEST, true, true, LabSchemas.SOURCE, true));
     }
 }

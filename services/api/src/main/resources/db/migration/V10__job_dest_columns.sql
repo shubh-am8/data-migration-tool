@@ -1,0 +1,2 @@
+ALTER TABLE jobs ADD COLUMN dest_schema_name VARCHAR(255);
+ALTER TABLE jobs ADD COLUMN dest_table VARCHAR(255);

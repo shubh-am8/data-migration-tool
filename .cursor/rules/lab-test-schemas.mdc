@@ -1,0 +1,47 @@
+---
+description: Lab DB test_source / test_destination schemas, seed data, per-job dest tables, playground UI
+globs: "{marketplace/plugins/lab-devtools/**,services/api/src/main/java/com/migration/marketplace/**,apps/web/src/**/lab/**,apps/web/src/lib/lab-*,apps/web/src/lib/simulation-options.ts,packages/domain/src/main/java/com/migration/jobs/LabSchemas.java}"
+alwaysApply: false
+---
+
+# Lab test schemas (`migration_lab` :5433)
+
+## Two schemas — do not conflate
+
+| Schema | Role | Mutability |
+|--------|------|------------|
+| `test_source` | Fixed sample tables with pre-seeded hot/cold data for TEST job **source** | DDL via Lab Dev Tools install only; UI is read-only |
+| `test_destination` | Per-job migration **target** tables | UI may truncate/drop individual tables or clean entire schema |
+
+Constants live in `com.migration.jobs.LabSchemas` (domain). Frontend mirrors via `LAB_SOURCE_SCHEMA` / `LAB_DEST_SCHEMA` in `simulation-options.ts`.
+
+## TEST job contract
+
+- `JobRunModeGuard`: TEST jobs require sandbox source **and** dest; `schemaName` must be `test_source` (never `test_destination`).
+- `schemaName` + `sourceTable` = read path. `destSchemaName` (`test_destination`) + `destTable` (`job_<id-prefix>`) = write path.
+- On job **create** (TEST only), API provisions `test_destination.job_<12-char-id>` via `CREATE TABLE … (LIKE test_source.<table> INCLUDING ALL)`.
+- `BatchCopyEngine`: separate `QuerySpec` (source) and `CopySpec` (dest) — never assume same schema/table on both sides.
+- Simulation (`config_json.kind=SIMULATE`) seeds **test_source** only; scenarios: `COLD_ONLY`, `HOT_ONLY`, `HOT_THEN_COLD`, `COLD_THEN_HOT`.
+
+## Sample tables (`test_source`)
+
+- `orders_cold` — `created_at` timestamp; seed = cold-only rows
+- `orders_hot_cold` — `updated_at` timestamp; seed = mixed hot/cold rows
+- Seed SQL in `marketplace/plugins/lab-devtools/sql/002_lab_seed.sql` (idempotent inserts)
+
+## Lab API (`/api/lab`)
+
+- Introspection: `/schemas`, `/schemas/{schema}/tables`, `…/columns` — schemas limited to `test_source`, `test_destination`
+- Playground: `GET /api/lab/tables/{schema}` returns row count + size bytes
+- Mutations ( **`test_destination` only** ): `POST …/tables/{table}/truncate`, `POST …/tables/{table}/drop`, `POST /api/lab/destination/truncate-all`, `POST /api/lab/destination/drop-all`
+
+## UI
+
+- Nav: **Lab Playground** → `/lab` (Platform section)
+- Colorful selection states: emerald = source schema/table, sky = destination table rows
+- Job wizard step 2 (TEST): pick table from `test_source`; show read-only dest preview (`test_destination.job_…`)
+- Destructive ops: `EmailConfirmDialog` pattern or typed confirm for drop-all
+
+## Deprecated
+
+- `app` / `test` lab schemas — removed; do not reintroduce. Lab Dev Tools `001` SQL drops them on install.

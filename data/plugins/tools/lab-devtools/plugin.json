@@ -1,7 +1,0 @@
-{
-  "id": "lab-devtools",
-  "kind": "TOOL",
-  "name": "Lab Dev Tools",
-  "version": "0.1.0",
-  "description": "Dev playground: lab schemas, sample tables, and TEST-mode simulation jobs."
-}

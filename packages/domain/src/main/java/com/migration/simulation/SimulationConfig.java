@@ -30,7 +30,7 @@ public record SimulationConfig(String scenario, String schema, String table, int
             JsonNode n = MAPPER.readTree(configJson);
             return new SimulationConfig(
                 n.path("scenario").asText("COLD_ONLY"),
-                n.path("schema").asText("app"),
+                n.path("schema").asText("test_source"),
                 n.path("table").asText("orders_cold"),
                 n.path("rows").asInt(100),
                 n.path("updateRatio").asDouble(0.0));

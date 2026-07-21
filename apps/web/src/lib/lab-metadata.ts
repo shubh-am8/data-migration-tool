@@ -1,4 +1,4 @@
-import { LAB_SCHEMAS, LAB_SIMULATION_TABLES } from "./simulation-options";
+import { LAB_SCHEMAS, LAB_SIMULATION_TABLES, LAB_SOURCE_SCHEMA } from "./simulation-options";
 
 export type LabTableEntry = {
   name: string;
@@ -12,8 +12,10 @@ export type LabColumnEntry = {
   dataType: string;
 };
 
-/** Schemas always offered in TEST mode (matches JobRunModeGuard). */
+/** Schemas offered in TEST wizard (source only). */
 export const LAB_SCHEMA_FALLBACKS: readonly string[] = LAB_SCHEMAS;
+
+export { LAB_SOURCE_SCHEMA, LAB_DEST_SCHEMA } from "./simulation-options";
 
 const ORDERS_COLD_COLUMNS: LabColumnEntry[] = [
   { name: "id", dataType: "bigint" },
@@ -35,7 +37,7 @@ const LAB_COLUMNS: Record<string, LabColumnEntry[]> = {
 };
 
 export function labTablesForSchema(schema: string): LabTableEntry[] {
-  if (!(LAB_SCHEMA_FALLBACKS as readonly string[]).includes(schema)) return [];
+  if (schema !== LAB_SOURCE_SCHEMA) return [];
   return LAB_SIMULATION_TABLES.map((t) => ({ ...t }));
 }
 
@@ -44,5 +46,5 @@ export function labColumnsForTable(table: string): LabColumnEntry[] {
 }
 
 export function isLabSchema(schema: string): boolean {
-  return (LAB_SCHEMA_FALLBACKS as readonly string[]).includes(schema);
+  return schema === LAB_SOURCE_SCHEMA;
 }

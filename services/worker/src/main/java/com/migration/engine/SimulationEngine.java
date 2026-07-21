@@ -12,7 +12,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Set;
+import com.migration.jobs.LabSchemas;
+
 import java.util.UUID;
 
 /**
@@ -26,7 +27,6 @@ import java.util.UUID;
 public class SimulationEngine {
     private static final Logger log = LoggerFactory.getLogger(SimulationEngine.class);
 
-    private static final Set<String> ALLOWED_SCHEMAS = Set.of("app", "test");
     private static final String COLD_TABLE = "orders_cold";
     private static final String HOT_COLD_TABLE = "orders_hot_cold";
 
@@ -121,8 +121,8 @@ public class SimulationEngine {
     }
 
     private static String requireAllowedSchema(String schema) {
-        if (!ALLOWED_SCHEMAS.contains(schema)) {
-            throw new IllegalArgumentException("Simulation schema must be app or test, got: " + schema);
+        if (!LabSchemas.SOURCE.equals(schema)) {
+            throw new IllegalArgumentException("Simulation schema must be " + LabSchemas.SOURCE + ", got: " + schema);
         }
         return schema;
     }

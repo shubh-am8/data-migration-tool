@@ -7,6 +7,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     label: "Platform",
     items: [
       { href: "/dashboard", label: "Dashboard" },
+      { href: "/lab", label: "Lab Playground" },
       { href: "/infra", label: "Infra" },
     ],
   },

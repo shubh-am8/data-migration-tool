@@ -7,6 +7,7 @@ import com.migration.connectors.*;
 import com.migration.connectors.ConnectionService;
 import com.migration.notifications.GspaceNotifier;
 import com.migration.simulation.SimulationConfig;
+import com.migration.marketplace.LabDestinationProvisioner;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,13 +28,15 @@ public class JobService {
     private final AppConfigService appConfigService;
     private final StringRedisTemplate redis;
     private final GspaceNotifier gspaceNotifier;
+    private final LabDestinationProvisioner labDestinationProvisioner;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JobService(JobRepository jobRepository, JobPhaseRepository phaseRepository,
                       JobEventRepository eventRepository, AlertConfigRepository alertConfigRepository,
                       ConnectionService connectionService, ConnectorPluginRegistry pluginRegistry,
                       AppConfigService appConfigService, StringRedisTemplate redis,
-                      GspaceNotifier gspaceNotifier) {
+                      GspaceNotifier gspaceNotifier,
+                      LabDestinationProvisioner labDestinationProvisioner) {
         this.jobRepository = jobRepository;
         this.phaseRepository = phaseRepository;
         this.eventRepository = eventRepository;
@@ -43,6 +46,7 @@ public class JobService {
         this.appConfigService = appConfigService;
         this.redis = redis;
         this.gspaceNotifier = gspaceNotifier;
+        this.labDestinationProvisioner = labDestinationProvisioner;
     }
 
     public PageResponse<Map<String, Object>> list(Integer page, Integer size) {
@@ -62,6 +66,12 @@ public class JobService {
         applyBody(job, body);
         validateJob(job, body);
         job = jobRepository.save(job);
+        try {
+            labDestinationProvisioner.provision(job);
+            job = jobRepository.save(job);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to provision lab destination table: " + e.getMessage(), e);
+        }
         initPhases(job);
         saveAlertConfig(job.getId(), body);
         logEvent(job.getId(), "CREATED", null);
@@ -319,6 +329,8 @@ public class JobService {
         dto.put("maxChunkDurationHours", job.getMaxChunkDurationHours());
         dto.put("tsColumn", job.getTsColumn());
         dto.put("schemaName", job.getSchemaName());
+        dto.put("destSchemaName", job.getDestSchemaName());
+        dto.put("destTable", job.getDestTable());
         dto.put("sourceTable", job.getSourceTable());
         dto.put("isPartition", job.isPartition());
         dto.put("partitionName", job.getPartitionName());

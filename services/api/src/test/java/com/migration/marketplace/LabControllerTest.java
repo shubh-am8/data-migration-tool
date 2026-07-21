@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.migration.connectors.SchemaInfo;
+import com.migration.jobs.LabSchemas;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
@@ -17,12 +18,16 @@ class LabControllerTest {
     @Mock
     private LabIntrospectionService labIntrospection;
 
+    @Mock
+    private LabAdminService labAdmin;
+
     @InjectMocks
     private LabController controller;
 
     @Test
     void listsLabSchemas() throws Exception {
-        when(labIntrospection.listSchemas()).thenReturn(new SchemaInfo(java.util.List.of("app", "test")));
+        when(labIntrospection.listSchemas()).thenReturn(
+            new SchemaInfo(java.util.List.of(LabSchemas.SOURCE, LabSchemas.DESTINATION)));
         assertEquals(2, controller.schemas().schemas().size());
     }
 }

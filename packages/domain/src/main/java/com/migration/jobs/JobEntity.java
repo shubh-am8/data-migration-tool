@@ -73,6 +73,12 @@ public class JobEntity {
     @Column(name = "schema_name")
     private String schemaName;
 
+    @Column(name = "dest_schema_name")
+    private String destSchemaName;
+
+    @Column(name = "dest_table")
+    private String destTable;
+
     @Column(name = "source_table")
     private String sourceTable;
 
@@ -133,6 +139,10 @@ public class JobEntity {
     public void setTsColumn(String tsColumn) { this.tsColumn = tsColumn; }
     public String getSchemaName() { return schemaName; }
     public void setSchemaName(String schemaName) { this.schemaName = schemaName; }
+    public String getDestSchemaName() { return destSchemaName; }
+    public void setDestSchemaName(String destSchemaName) { this.destSchemaName = destSchemaName; }
+    public String getDestTable() { return destTable; }
+    public void setDestTable(String destTable) { this.destTable = destTable; }
     public String getSourceTable() { return sourceTable; }
     public void setSourceTable(String sourceTable) { this.sourceTable = sourceTable; }
     public boolean isPartition() { return partition; }

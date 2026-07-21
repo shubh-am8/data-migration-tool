@@ -7,7 +7,7 @@ const base = {
   simulationScenario: "COLD_ONLY" as const,
   sourceId: "a",
   destId: "b",
-  schema: "app",
+  schema: "test_source",
   table: "orders_cold",
   tsColumn: "created_at",
   migrationMode: "COLD_ONLY",
@@ -35,7 +35,7 @@ describe("validateJobWizardStep", () => {
 
   it("rejects public schema for TEST run mode", () => {
     expect(validateJobWizardStep("2", { ...base, schema: "public", table: "connections" }).ok).toBe(false);
-    expect(validateJobWizardStep("2", { ...base, schema: "test" }).ok).toBe(true);
+    expect(validateJobWizardStep("2", { ...base, schema: "test_destination", table: "job_abc" }).ok).toBe(false);
   });
 
   it("blocks step 3 when step 1 invalid", () => {

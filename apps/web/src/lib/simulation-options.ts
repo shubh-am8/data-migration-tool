@@ -7,7 +7,11 @@ export const SIMULATION_SCENARIO_OPTIONS: { value: SimulationScenario; label: st
   { value: "COLD_THEN_HOT", label: "Cold then hot" },
 ];
 
-export const LAB_SCHEMAS = ["app", "test"] as const;
+export const LAB_SOURCE_SCHEMA = "test_source" as const;
+export const LAB_DEST_SCHEMA = "test_destination" as const;
+
+/** Schemas offered in TEST job wizard (source only). */
+export const LAB_SCHEMAS = [LAB_SOURCE_SCHEMA] as const;
 
 export const LAB_SIMULATION_TABLES = [
   { name: "orders_cold", kind: "table", partitioned: false, partitions: [] as string[] },
@@ -17,12 +21,12 @@ export const LAB_SIMULATION_TABLES = [
 export function simulationPreset(scenario: SimulationScenario) {
   const usesHotColdTable = scenario === "HOT_THEN_COLD" || scenario === "COLD_THEN_HOT" || scenario === "HOT_ONLY";
   return {
-    schema: "app" as const,
+    schema: LAB_SOURCE_SCHEMA,
     table: usesHotColdTable ? "orders_hot_cold" : "orders_cold",
     configJson: {
       kind: "SIMULATE" as const,
       scenario,
-      schema: "app",
+      schema: LAB_SOURCE_SCHEMA,
       table: usesHotColdTable ? "orders_hot_cold" : "orders_cold",
       rows: 100,
       updateRatio: scenario === "HOT_THEN_COLD" || scenario === "COLD_THEN_HOT" ? 0.2 : 0,

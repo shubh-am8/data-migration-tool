@@ -40,7 +40,7 @@ export function validateJobWizardStep(step: string, s: JobWizardState): StepVali
         s.runMode === "TEST" &&
         !(LAB_SCHEMAS as readonly string[]).includes(s.schema)
       ) {
-        return { ok: false, message: "TEST jobs must use schema app or test (lab database)" };
+        return { ok: false, message: "TEST jobs must use schema test_source (lab source playground)" };
       }
       return { ok: true };
     }

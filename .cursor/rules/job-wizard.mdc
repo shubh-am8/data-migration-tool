@@ -12,6 +12,12 @@ alwaysApply: false
 - Step 2 always shows `SchemaPicker` + `TablePicker` for TEST and PRODUCTION (including seed-sample-data jobs).
 - Every step needs **Back** except step 1.
 
+## TEST mode lab schemas
+
+- Source: `test_source` only (`LAB_SCHEMAS` in `simulation-options.ts`).
+- Destination: auto-provisioned `test_destination.job_<id>` on job create — wizard shows read-only preview; inspect in `/lab`.
+- See `.cursor/rules/lab-test-schemas.mdc` for full contract.
+
 ## Dropdowns
 
 - Use **`OptionSelect`** (`@/components/ui/option-select`) whenever `value` is an ID or enum — never raw `SelectValue` for UUID/enum triggers (base-ui shows the value, not the label).
@@ -21,9 +27,9 @@ alwaysApply: false
 ## Simulation (TEST + seed sample data)
 
 - Scenarios: Cold data only, Hot data only, Hot then cold, Cold then hot — via `simulation-options.ts`.
-- Merge `LAB_SCHEMAS` (`app`, `test`) and preset tables when simulating; call `applySimulationPreset` on scenario change.
+- Merge `LAB_SCHEMAS` (`test_source`) and preset tables when simulating; call `applySimulationPreset` on scenario change.
 - `configJson.kind` must be `SIMULATE`.
-- Same connection for source and dest is valid (copy between tables in one DB).
+- Same connection for source and dest is valid (copy between schemas in one DB).
 
 ## Logs
 
