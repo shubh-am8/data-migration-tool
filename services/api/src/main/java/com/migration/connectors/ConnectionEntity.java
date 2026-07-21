@@ -20,6 +20,9 @@ public class ConnectionEntity {
     @Column(name = "config_encrypted", nullable = false)
     private String configEncrypted;
 
+    @Column(nullable = false)
+    private boolean sandbox = false;
+
     @Column(name = "created_by")
     private UUID createdBy;
 
@@ -37,6 +40,8 @@ public class ConnectionEntity {
     public void setName(String name) { this.name = name; }
     public String getConfigEncrypted() { return configEncrypted; }
     public void setConfigEncrypted(String configEncrypted) { this.configEncrypted = configEncrypted; }
+    public boolean isSandbox() { return sandbox; }
+    public void setSandbox(boolean sandbox) { this.sandbox = sandbox; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public Instant getCreatedAt() { return createdAt; }

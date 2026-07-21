@@ -6,8 +6,17 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Lab Postgres (`migration_lab` :5433) with `app`/`test` schemas for migration practice
+- Marketplace catalog under `marketplace/` with GitHub Releases / local-dist SHA-256 install
+- `lab-devtools` TOOL plugin (not preinstalled) for lab DDL + simulation jobs
+- Job `runMode` TEST|PRODUCTION and connection `sandbox` flag
 - Open-sourced under Apache-2.0 with LICENSE, CONTRIBUTING, SECURITY, and CODE_OF_CONDUCT
 - In-app docs at `/docs/[slug]` with allowlisted registry and Mermaid diagram rendering
+
+### Changed
+
+- `run-local-dev.sh` keeps Docker infra running when the app exits (use `--stop-infra-on-exit` to tear down)
+- Connectors no longer seeded into `bundled/` from the main Maven build
 
 ## [0.7.0] - 2026-07-20
 

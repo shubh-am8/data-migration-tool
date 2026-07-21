@@ -29,6 +29,10 @@ export const DOC_REGISTRY: Record<string, { title: string; relativePath: string 
     title: "Adding a Connector",
     relativePath: "connectors/adding-a-connector.md",
   },
+  "lab-devtools": {
+    title: "Lab Dev Tools",
+    relativePath: "lab-devtools.md",
+  },
   api: {
     title: "API Service",
     relativePath: "components/api.md",
@@ -60,6 +64,7 @@ export const DOC_NAV = [
   ]},
   { id: "connectors", title: "Connectors", children: [
     { slug: "marketplace" }, { slug: "connectors-overview" }, { slug: "adding-a-connector" },
+    { slug: "lab-devtools" },
   ]},
   { id: "components", title: "Components", children: [
     { slug: "api" }, { slug: "worker" }, { slug: "frontend" }, { slug: "connector-sdk" },

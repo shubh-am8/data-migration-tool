@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SchemaPicker } from "./SchemaPicker";
 import { TablePicker } from "./TablePicker";
 import { FilterBuilder, FilterRow } from "./FilterBuilder";
@@ -33,6 +34,9 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [step, setStep] = useState("1");
   const [connections, setConnections] = useState<Array<{ id: string; name: string }>>([]);
   const [name, setName] = useState("");
+  const [runMode, setRunMode] = useState<"TEST" | "PRODUCTION">("TEST");
+  const [simulate, setSimulate] = useState(false);
+  const [simulationScenario, setSimulationScenario] = useState<"COLD_ONLY" | "HOT_THEN_COLD">("COLD_ONLY");
   const [sourceId, setSourceId] = useState("");
   const [destId, setDestId] = useState("");
   const [schemas, setSchemas] = useState<string[]>([]);
@@ -93,9 +97,17 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
     return new Date(value).toISOString();
   }
 
+  function simulationConfigJson() {
+    if (!simulate || runMode !== "TEST") return undefined;
+    return simulationScenario === "HOT_THEN_COLD"
+      ? { kind: "SIMULATE", scenario: "HOT_THEN_COLD", schema: "app", table: "orders_hot_cold", rows: 100, updateRatio: 0.2 }
+      : { kind: "SIMULATE", scenario: "COLD_ONLY", schema: "app", table: "orders_cold", rows: 100, updateRatio: 0 };
+  }
+
   async function saveJob() {
+    const configJson = simulationConfigJson();
     const body = {
-      name, sourceConnectionId: sourceId, destConnectionId: destId,
+      name, runMode, sourceConnectionId: sourceId, destConnectionId: destId,
       migrationMode, threadCount, hotDays, tsColumn, schemaName: schema,
       sourceTable: table, isPartition, partitionName,
       conflictColumns, filters,
@@ -105,6 +117,7 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       minChunkDurationHours, maxChunkDurationHours,
       lifecycleAlertsEnabled, progressIntervalMin: progressIntervalMin || null,
       gspaceWebhookOverride: webhookOverride || null,
+      ...(configJson ? { configJson } : {}),
     };
     if (jobId) {
       await apiFetch(`/api/jobs/${jobId}`, { method: "PUT", body: JSON.stringify(body) });
@@ -191,6 +204,48 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       <TabsContent value="1" className="flex flex-col gap-4 pt-4">
         <FieldGroup>
           <Field><FieldLabel>Job Name</FieldLabel><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field>
+            <FieldLabel>Run Mode</FieldLabel>
+            <ToggleGroup
+              variant="outline"
+              value={[runMode]}
+              onValueChange={(value) => {
+                const next = value[0];
+                if (next === "TEST" || next === "PRODUCTION") {
+                  setRunMode(next);
+                  if (next === "PRODUCTION") setSimulate(false);
+                }
+              }}
+            >
+              <ToggleGroupItem value="TEST">Test</ToggleGroupItem>
+              <ToggleGroupItem value="PRODUCTION">Production</ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
+          {runMode === "PRODUCTION" && (
+            <Alert variant="destructive">
+              <AlertTitle>This job will run against production data</AlertTitle>
+              <AlertDescription>
+                Source and destination must be non-sandbox connections. Simulation seeding is unavailable in Production.
+              </AlertDescription>
+            </Alert>
+          )}
+          {runMode === "TEST" && (
+            <Field>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={simulate} onChange={(e) => setSimulate(e.target.checked)} />
+                Seed sample data job
+              </label>
+              {simulate && (
+                <Select value={simulationScenario} onValueChange={(v) => (v === "COLD_ONLY" || v === "HOT_THEN_COLD") && setSimulationScenario(v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="COLD_ONLY">Cold only (orders_cold)</SelectItem>
+                    <SelectItem value="HOT_THEN_COLD">Hot then cold (orders_hot_cold)</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </Field>
+          )}
           <Field>
             <FieldLabel>Source</FieldLabel>
             <Select value={sourceId} onValueChange={(v) => v && setSourceId(v)}>

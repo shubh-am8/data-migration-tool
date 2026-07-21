@@ -6,7 +6,9 @@ import com.migration.connectors.WorkerConnectionService;
 import com.migration.engine.BatchCopyEngine;
 import com.migration.engine.HotColdManager;
 import com.migration.engine.ReconciliationService;
+import com.migration.engine.SimulationEngine;
 import com.migration.jobs.*;
+import com.migration.simulation.SimulationConfig;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.slf4j.Logger;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.RestClient;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +39,7 @@ public class JobQueueConsumer {
     private final WorkerJobEventRepository eventRepository;
     private final WorkerConnectionService connectionService;
     private final ConnectorPluginRegistry pluginRegistry;
+    private final SimulationEngine simulationEngine;
     private final String workerId;
     private final String gspaceUrl;
     private final ReconciliationService reconciliationService;
@@ -49,6 +53,7 @@ public class JobQueueConsumer {
                             WorkerJobEventRepository eventRepository,
                             WorkerConnectionService connectionService,
                             ConnectorPluginRegistry pluginRegistry,
+                            SimulationEngine simulationEngine,
                             @Value("${app.worker-id}") String workerId,
                             @Value("${app.gspace-webhook-url:}") String gspaceUrl) {
         this.redis = redis;
@@ -59,6 +64,7 @@ public class JobQueueConsumer {
         this.eventRepository = eventRepository;
         this.connectionService = connectionService;
         this.pluginRegistry = pluginRegistry;
+        this.simulationEngine = simulationEngine;
         this.workerId = workerId;
         this.gspaceUrl = gspaceUrl;
         this.reconciliationService = new ReconciliationService();
@@ -102,6 +108,11 @@ public class JobQueueConsumer {
         jobRepository.save(job);
         writeEvent(jobId, "STARTED", null);
         notifyGspace("Job *" + job.getName() + "* STARTED");
+
+        if (SimulationConfig.isSimulation(job.getConfigJson())) {
+            runSimulation(job);
+            return;
+        }
 
         List<JobPhaseEntity> phases = phaseRepository.findByJobId(jobId);
         String pluginId = connectionService.pluginId(job.getSourceConnectionId());
@@ -159,6 +170,18 @@ public class JobQueueConsumer {
         job.setUpdatedAt(Instant.now());
         jobRepository.save(job);
         writeEvent(jobId, "COMPLETED", null);
+        notifyGspace("Job *" + job.getName() + "* COMPLETED");
+    }
+
+    /** SIMULATE jobs seed/touch lab DB sample rows directly — no plugin, connections, or phases. */
+    private void runSimulation(JobEntity job) throws SQLException {
+        SimulationConfig config = SimulationConfig.parse(job.getConfigJson());
+        int hotDays = job.getHotDays() == null ? 0 : job.getHotDays();
+        simulationEngine.run(config, hotDays);
+        job.setStatus(JobStatus.COMPLETED);
+        job.setUpdatedAt(Instant.now());
+        jobRepository.save(job);
+        writeEvent(job.getId(), "COMPLETED", null);
         notifyGspace("Job *" + job.getName() + "* COMPLETED");
     }
 

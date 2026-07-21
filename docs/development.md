@@ -21,15 +21,16 @@ Open http://localhost:3000
 
 | Command | What starts |
 |---|---|
-| `./run-local-dev.sh` | Postgres + Redis + API + Worker + Frontend |
-| `./run-local-dev.sh --backend` | Postgres + Redis + API + Worker |
+| `./run-local-dev.sh` | Postgres + Lab DB + Redis + API + Worker + Frontend |
+| `./run-local-dev.sh --backend` | Postgres + Lab DB + Redis + API + Worker |
 | `./run-local-dev.sh --frontend` | Frontend only (API must already run) |
-| `./run-local-dev.sh --keep-infra` | On Ctrl+C, leave Postgres/Redis running |
+| `./run-local-dev.sh --stop-infra-on-exit` | On Ctrl+C, stop Postgres/Redis via docker compose down |
+| `./run-local-dev.sh --keep-infra` | Deprecated no-op (infra stays running by default) |
 | `./run-local-dev.sh --help` | Show usage |
 
 ## Dev Script Flow
 
-On every start, `prepare_dev_stack` clears stale listeners on that mode's ports; for backend/all, it also tears down this project's Docker infra before starting.
+On every start, `prepare_dev_stack` clears stale listeners on that mode's app ports (8080/8081/3000). Docker infra (Postgres/Redis) is left running across restarts; use `--stop-infra-on-exit` to tear it down on exit.
 
 ```mermaid
 flowchart TD
@@ -38,8 +39,8 @@ flowchart TD
   env --> prepare[prepare_dev_stack clear ports]
   prepare --> mode{Mode?}
   mode -->|frontend| fe[start_frontend :3000]
-  mode -->|backend or all| infra[start_infra Postgres + Redis]
-  infra --> build[build_backend seed bundled JAR]
+  mode -->|backend or all| infra[start_infra Postgres + Lab DB + Redis]
+  infra --> build[build_backend API + Worker only]
   build --> api[start_api :8080]
   api --> worker[start_worker :8081]
   worker --> allCheck{Mode = all?}
@@ -55,8 +56,17 @@ flowchart TD
 | Frontend | 3000 |
 | API | 8080 |
 | Worker | 8081 |
-| PostgreSQL | 5432 |
+| PostgreSQL (platform) | 5432 |
+| Lab PostgreSQL (`migration_lab`) | 5433 |
 | Redis | 6379 |
+
+## Lab database and dev tools
+
+Local Compose starts **`labdb`** alongside `appdb` and Redis. The lab instance (`migration_lab` on `:5433`) holds practice data in `app`/`test` schemas — separate from platform metadata in `migration_app`.
+
+Install **`lab-devtools`** from the Marketplace to apply lab DDL and enable TEST-mode simulation jobs. See [Lab Dev Tools](lab-devtools.md).
+
+Connectors are **not** copied into `data/plugins/bundled/` at startup. Build dist assets with `marketplace/scripts/build-dist.sh`, then install PostgreSQL (and other catalog items) from the Marketplace UI.
 
 ## Tests
 

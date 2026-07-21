@@ -1,6 +1,7 @@
 package com.migration.jobs;
 
 import com.migration.config.AppConfigService;
+import com.migration.simulation.SimulationConfig;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -125,6 +126,24 @@ class JobServiceValidationTest {
         job.setHotDays(7);
         job.setConflictColumns(List.of("id"));
         assertDoesNotThrow(() -> service.validateJob(job, Map.of()));
+    }
+
+    @Test
+    void applyBodySerializesConfigJsonMapToJsonString() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        service.applyBody(job, Map.of("configJson", Map.of("kind", "SIMULATE", "scenario", "COLD_ONLY")));
+        assertTrue(SimulationConfig.isSimulation(job.getConfigJson()));
+        assertEquals("COLD_ONLY", SimulationConfig.parse(job.getConfigJson()).scenario());
+    }
+
+    @Test
+    void applyBodyLeavesConfigJsonUntouchedWhenKeyAbsent() {
+        JobService service = newServiceWithThreadBounds();
+        JobEntity job = new JobEntity();
+        String before = job.getConfigJson();
+        service.applyBody(job, Map.of("name", "job-1"));
+        assertEquals(before, job.getConfigJson());
     }
 
     private static JobService newServiceWithThreadBounds() {
