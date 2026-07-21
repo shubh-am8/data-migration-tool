@@ -1,6 +1,6 @@
 package com.migration.engine;
 
-import com.migration.jobs.SimulationConfig;
+import com.migration.simulation.SimulationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

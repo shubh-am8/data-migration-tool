@@ -8,6 +8,7 @@ import com.migration.engine.HotColdManager;
 import com.migration.engine.ReconciliationService;
 import com.migration.engine.SimulationEngine;
 import com.migration.jobs.*;
+import com.migration.simulation.SimulationConfig;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.slf4j.Logger;

@@ -1,0 +1,30 @@
+CREATE SCHEMA IF NOT EXISTS app;
+CREATE SCHEMA IF NOT EXISTS test;
+
+CREATE TABLE IF NOT EXISTS app.orders_cold (
+  id BIGSERIAL PRIMARY KEY,
+  order_code TEXT NOT NULL UNIQUE,
+  amount_cents INT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app.orders_hot_cold (
+  id BIGSERIAL PRIMARY KEY,
+  order_code TEXT NOT NULL UNIQUE,
+  amount_cents INT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS test.orders_cold (
+  id BIGSERIAL PRIMARY KEY,
+  order_code TEXT NOT NULL UNIQUE,
+  amount_cents INT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS test.orders_hot_cold (
+  id BIGSERIAL PRIMARY KEY,
+  order_code TEXT NOT NULL UNIQUE,
+  amount_cents INT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL
+);

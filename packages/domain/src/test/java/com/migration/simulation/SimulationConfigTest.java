@@ -1,4 +1,4 @@
-package com.migration.jobs;
+package com.migration.simulation;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package com.migration.jobs;
+package com.migration.simulation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
