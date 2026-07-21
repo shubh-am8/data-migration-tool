@@ -128,3 +128,26 @@
     @apply font-sans;
   }
 }
+
+@layer components {
+  [data-sonner-toast][data-type="success"] {
+    border-color: oklch(0.65 0.15 145);
+    background: oklch(0.95 0.03 145);
+    color: oklch(0.25 0.08 145);
+  }
+  [data-sonner-toast][data-type="error"] {
+    border-color: var(--destructive);
+    background: oklch(0.95 0.04 25);
+    color: oklch(0.35 0.12 25);
+  }
+  [data-sonner-toast][data-type="warning"] {
+    border-color: oklch(0.75 0.15 85);
+    background: oklch(0.96 0.04 85);
+    color: oklch(0.35 0.1 85);
+  }
+  [data-sonner-toast][data-type="info"] {
+    border-color: oklch(0.65 0.12 240);
+    background: oklch(0.96 0.03 240);
+    color: oklch(0.3 0.08 240);
+  }
+}
