@@ -73,6 +73,18 @@ public class ConnectionService {
         return update(id, name, config, null);
     }
 
+    public Map<String, Object> getForEdit(UUID id) {
+        ConnectionEntity entity = connectionRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Connection not found"));
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("id", entity.getId());
+        dto.put("pluginId", entity.getPluginId());
+        dto.put("name", entity.getName());
+        dto.put("sandbox", entity.isSandbox());
+        dto.put("config", maskSecrets(decryptConfig(entity)));
+        return dto;
+    }
+
     @Transactional
     public Map<String, Object> update(UUID id, String name, Map<String, String> config, Boolean sandbox) {
         ConnectionEntity entity = connectionRepository.findById(id)
@@ -80,7 +92,8 @@ public class ConnectionService {
         requireInstalled(entity.getPluginId());
         if (name != null) entity.setName(name);
         if (config != null) {
-            Map<String, String> normalized = withPoolDefaults(config);
+            Map<String, String> merged = mergeSecrets(decryptConfig(entity), config);
+            Map<String, String> normalized = withPoolDefaults(merged);
             ConnectorPlugin plugin = pluginRegistry.require(entity.getPluginId());
             var validation = plugin.validate(normalized);
             if (!validation.valid()) {
@@ -160,6 +173,34 @@ public class ConnectionService {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    static boolean isSecretKey(String key) {
+        String k = key.toLowerCase();
+        return k.contains("password") || k.contains("secret") || k.contains("token");
+    }
+
+    static Map<String, String> maskSecrets(Map<String, String> config) {
+        Map<String, String> out = new LinkedHashMap<>(config);
+        for (String key : out.keySet()) {
+            if (isSecretKey(key)) {
+                out.put(key, "********");
+            }
+        }
+        return out;
+    }
+
+    static Map<String, String> mergeSecrets(Map<String, String> existing, Map<String, String> incoming) {
+        Map<String, String> merged = new LinkedHashMap<>(existing);
+        for (Map.Entry<String, String> entry : incoming.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (isSecretKey(key) && (value == null || value.isBlank() || "********".equals(value))) {
+                continue;
+            }
+            merged.put(key, value);
+        }
+        return merged;
     }
 
     private Map<String, Object> toPublicDto(ConnectionEntity entity) {

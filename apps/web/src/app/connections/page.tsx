@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SetPageChrome } from "@/components/layout/PageChromeContext";
+import { ConnectionTestSheet } from "@/components/connectors/ConnectionTestSheet";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import type { PageResponse } from "@/components/shared/PaginationBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
+import { pluginBadgeVariant } from "@/lib/plugin-badge";
 
 type ConnectionRow = { id: string; name: string; pluginId: string };
 
@@ -20,6 +22,7 @@ export default function ConnectionsPage() {
   const [loading, setLoading] = useState(true);
   const [hasInstalledConnector, setHasInstalledConnector] = useState<boolean | null>(null);
   const [pluginFilter, setPluginFilter] = useState<string>("all");
+  const [testTarget, setTestTarget] = useState<ConnectionRow | null>(null);
 
   useEffect(() => {
     apiFetch<{ id: string; installed?: boolean; enabled?: boolean }[]>("/api/marketplace")
@@ -65,7 +68,7 @@ export default function ConnectionsPage() {
       id: "plugin",
       header: "Connector",
       cell: (c) => (
-        <Badge variant="outline" className="rounded-full">
+        <Badge variant={pluginBadgeVariant(c.pluginId)} className="rounded-full">
           {c.pluginId}
         </Badge>
       ),
@@ -75,23 +78,16 @@ export default function ConnectionsPage() {
       header: "Actions",
       className: "text-right",
       cell: (c) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            try {
-              await apiFetch(`/api/connections/${c.id}/test`, { method: "POST" });
-              notify.success("Connection OK");
-            } catch (e) {
-              notify.error(
-                "Connection test failed",
-                e instanceof Error ? e.message : String(e)
-              );
-            }
-          }}
-        >
-          Test
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button variant="info" size="sm" onClick={() => setTestTarget(c)}>
+            Test
+          </Button>
+          <Link href={`/connections/${c.id}/edit`}>
+            <Button variant="warning" size="sm">
+              Update
+            </Button>
+          </Link>
+        </div>
       ),
     },
   ];
@@ -166,6 +162,15 @@ export default function ConnectionsPage() {
           setSize(s);
           setPage(0);
         }}
+      />
+      <ConnectionTestSheet
+        open={testTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setTestTarget(null);
+        }}
+        connectionId={testTarget?.id ?? null}
+        connectionName={testTarget?.name ?? ""}
+        pluginId={testTarget?.pluginId ?? ""}
       />
     </AppShell>
   );

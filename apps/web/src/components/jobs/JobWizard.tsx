@@ -23,6 +23,7 @@ import { AlertConfig } from "./AlertConfig";
 import { apiFetch } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
 import { LiveLogTerminal } from "@/components/shared/LiveLogTerminal";
+import { inferLevelFromText, type LogLine } from "@/lib/log-line";
 import type { PageResponse } from "@/components/shared/PaginationBar";
 
 interface JobWizardProps {
@@ -61,7 +62,7 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [progressIntervalMin, setProgressIntervalMin] = useState<number | "">(30);
   const [webhookOverride, setWebhookOverride] = useState("");
   const [preflight, setPreflight] = useState<{ recommendations?: Array<{ reason: string }> } | null>(null);
-  const [testLines, setTestLines] = useState<string[]>([]);
+  const [testLines, setTestLines] = useState<LogLine[]>([]);
   const [testPassed, setTestPassed] = useState(false);
   const [testing, setTesting] = useState(false);
 
@@ -168,7 +169,15 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           if (!dataLine) continue;
           try {
             const json = JSON.parse(dataLine.slice(5).trim()) as { line?: string; status?: string };
-            if (json.line) setTestLines((l) => [...l, json.line!]);
+            if (json.line) {
+              const level =
+                json.status === "failed"
+                  ? "error"
+                  : json.status === "passed"
+                    ? "success"
+                    : inferLevelFromText(json.line);
+              setTestLines((l) => [...l, { text: json.line!, level }]);
+            }
             if (json.status === "passed") {
               setTestPassed(true);
               notify.success("Test passed — truncate test rows before creating the job");
@@ -312,7 +321,10 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           <Button variant="info" disabled={testing} onClick={runTestJob}>
             {testing ? "Testing…" : "Test Job"}
           </Button>
-          <LiveLogTerminal lines={testLines} />
+          <LiveLogTerminal
+            lines={testLines}
+            status={testing ? "running" : testPassed ? "passed" : testLines.length ? "idle" : "idle"}
+          />
           {testPassed && (
             <Alert>
               <AlertTitle>Delete test rows before create</AlertTitle>

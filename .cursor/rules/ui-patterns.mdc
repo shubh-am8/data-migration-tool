@@ -25,5 +25,6 @@ alwaysApply: false
 - **Critical destructive actions** (revoke, delete, uninstall): use `EmailConfirmDialog` — show subject avatar/name/email; require typing that email before confirm. Never native `window.confirm` for admin-critical ops.
 - **In-app docs**: use `DocsShell` for `/docs` — left nested nav + search, right reader pane. Register slugs in `lib/docs/registry.ts`; render via `/docs/[slug]` + `MarkdownDoc` (Mermaid fences via `MermaidBlock`). Link with `DocLink` (truncating pill). Never `fetch` arbitrary paths or enable `rehype-raw`.
 - **Error isolation**: wrap new feature page bodies and risky widgets in `ComponentErrorBoundary` so one crash does not blank the whole app. Route-level failures use `app/error.tsx` or segment `error.tsx` (e.g. `app/docs/error.tsx`).
+- **Live logs**: use `LiveLogTerminal` + `LogLine` from `@/lib/log-line`; SSE via `useSseLog`. See `.cursor/rules/live-log-streaming.mdc`. Connection tests: `ConnectionTestSheet` + `notifyConnectionTestResult`.
 - **Empty list CTAs**: if no installed connectors → Marketplace; if connectors exist but list empty → primary create route (e.g. Add Connection). Do not hardcode “Install a connector first” when connectors are installed.
 - **Pagination**: `DataTable` + `PaginationBar`; hide bar when `totalElements === 0`; keep Rows select and Prev/Next on one `items-center` row.

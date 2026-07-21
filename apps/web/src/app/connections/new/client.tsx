@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { apiFetch } from "@/lib/api-client";
+import { notifyConnectionTestResult } from "@/lib/connection-test";
 import { notify } from "@/lib/notify";
 
 interface Plugin {
@@ -52,12 +53,11 @@ export default function NewConnectionClient() {
 
   async function handleTest(values: ConnectionFormValues) {
     if (!pluginId) return;
-    const result = await apiFetch<{ success: boolean; message: string }>("/api/connections/test", {
+    const result = await apiFetch<{ success: boolean; message: string; latencyMs: number }>("/api/connections/test", {
       method: "POST",
       body: JSON.stringify({ pluginId, config: valuesToConfig(values) }),
     });
-    if (result.success) notify.success(result.message);
-    else notify.error(result.message);
+    notifyConnectionTestResult(result);
   }
 
   async function handleSubmit(values: ConnectionFormValues, sandbox: boolean) {

@@ -103,7 +103,7 @@ export function ConnectionForm({ fields, initial, initialSandbox, onSubmit, onTe
         {onTest && (
           <Button
             type="button"
-            variant="outline"
+            variant="info"
             disabled={testing}
             onClick={async () => {
               setTesting(true);
@@ -117,7 +117,7 @@ export function ConnectionForm({ fields, initial, initialSandbox, onSubmit, onTe
             {testing ? "Testing…" : "Test Connection"}
           </Button>
         )}
-        <Button type="button" onClick={() => onSubmit(values, sandbox)}>
+        <Button type="button" variant="success" onClick={() => onSubmit(values, sandbox)}>
           Save
         </Button>
       </div>

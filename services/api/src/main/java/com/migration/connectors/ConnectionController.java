@@ -36,6 +36,11 @@ public class ConnectionController {
         return connectionService.create(pluginId, name, config, sandbox);
     }
 
+    @GetMapping("/{id}")
+    public Map<String, Object> get(@PathVariable UUID id) {
+        return connectionService.getForEdit(id);
+    }
+
     @PutMapping("/{id}")
     public Map<String, Object> update(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
         String name = (String) body.get("name");

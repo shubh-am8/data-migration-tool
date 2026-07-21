@@ -1,46 +1,75 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { inferLevelFromText, lineClassForLevel, normalizeLogLines, type LogLine } from "@/lib/log-line";
 import { cn } from "@/lib/utils";
 
 export function LiveLogTerminal({
   lines,
   className,
+  status,
 }: {
-  lines: string[];
+  lines: LogLine[] | string[];
   className?: string;
+  status?: "running" | "passed" | "failed" | "idle";
 }) {
   const endRef = useRef<HTMLDivElement>(null);
+  const normalized = normalizeLogLines(lines);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [lines]);
+  }, [normalized]);
+
+  const statusLabel =
+    status === "running"
+      ? "Running…"
+      : status === "passed"
+        ? "Passed"
+        : status === "failed"
+          ? "Failed"
+          : null;
 
   return (
-    <div
-      className={cn(
-        "max-h-72 overflow-y-auto rounded-lg border bg-zinc-950 p-3 font-mono text-xs text-zinc-100",
-        className
-      )}
-      role="log"
-      aria-live="polite"
-    >
-      {lines.length === 0 ? (
-        <p className="text-zinc-500">Waiting for output…</p>
-      ) : (
-        lines.map((line, i) => (
-          <div key={i} className="whitespace-pre-wrap break-all">
-            {line}
-          </div>
-        ))
-      )}
-      <div ref={endRef} />
+    <div className={cn("flex flex-col gap-2", className)}>
+      {statusLabel ? (
+        <div
+          className={cn(
+            "text-xs font-medium",
+            status === "passed" && "text-emerald-600 dark:text-emerald-400",
+            status === "failed" && "text-red-600 dark:text-red-400",
+            status === "running" && "text-sky-600 dark:text-sky-400"
+          )}
+        >
+          {statusLabel}
+        </div>
+      ) : null}
+      <div
+        className="max-h-72 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 font-mono text-xs"
+        role="log"
+        aria-live="polite"
+      >
+        {normalized.length === 0 ? (
+          <p className="text-zinc-500">Waiting for output…</p>
+        ) : (
+          normalized.map((line, i) => (
+            <div key={i} className={cn("whitespace-pre-wrap break-all", lineClassForLevel(line.level))}>
+              {line.text}
+            </div>
+          ))
+        )}
+        <div ref={endRef} />
+      </div>
     </div>
   );
 }
 
-/** Subscribe to SSE job test stream; returns lines + helpers */
+function inferLevelFromSseLine(text: string): LogLine["level"] {
+  return inferLevelFromText(text);
+}
+
+/** Subscribe to SSE job test stream; returns colored lines + helpers */
 export function useSseLog(url: string | null, body: unknown) {
-  const [lines, setLines] = useState<string[]>([]);
+  const [lines, setLines] = useState<LogLine[]>([]);
   const [done, setDone] = useState(false);
   const [passed, setPassed] = useState(false);
 
@@ -62,7 +91,7 @@ export function useSseLog(url: string | null, body: unknown) {
           signal: ctrl.signal,
         });
         if (!res.ok || !res.body) {
-          setLines((l) => [...l, `Error: HTTP ${res.status}`]);
+          setLines((l) => [...l, { text: `Error: HTTP ${res.status}`, level: "error" }]);
           setDone(true);
           return;
         }
@@ -81,18 +110,26 @@ export function useSseLog(url: string | null, body: unknown) {
             const raw = dataLine.slice(5).trim();
             try {
               const json = JSON.parse(raw) as { line?: string; status?: string };
-              if (json.line) setLines((l) => [...l, json.line!]);
+              if (json.line) {
+                const level =
+                  json.status === "failed"
+                    ? "error"
+                    : json.status === "passed"
+                      ? "success"
+                      : inferLevelFromSseLine(json.line);
+                setLines((l) => [...l, { text: json.line!, level }]);
+              }
               if (json.status === "passed") setPassed(true);
               if (json.status === "failed" || json.status === "passed") setDone(true);
             } catch {
-              setLines((l) => [...l, raw]);
+              setLines((l) => [...l, { text: raw, level: "info" }]);
             }
           }
         }
         setDone(true);
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
-          setLines((l) => [...l, `Error: ${(e as Error).message}`]);
+          setLines((l) => [...l, { text: `Error: ${(e as Error).message}`, level: "error" }]);
           setDone(true);
         }
       }

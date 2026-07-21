@@ -1,0 +1,32 @@
+---
+description: Reusable live log streaming UI (LiveLogTerminal)
+globs: apps/web/**
+alwaysApply: false
+---
+
+# Live log streaming
+
+Use the shared terminal viewer for any streaming or step-by-step diagnostic output — connection tests, job test SSE, worker tail, preflight logs.
+
+## Components
+
+- **`LiveLogTerminal`** (`@/components/shared/LiveLogTerminal`) — dark monospace panel, auto-scroll, per-line colors via `LogLine.level`.
+- **`LogLine`** (`@/lib/log-line`) — `{ text: string; level: "info" | "success" | "warn" | "error" }`.
+- **`useSseLog`** — same file; POST + `text/event-stream` → `LogLine[]` + `done` + `passed`.
+- **`ConnectionTestSheet`** — one-shot connection test in a `Sheet` (pattern for modal log viewers).
+
+## Rules
+
+- Never ad-hoc `<pre>` or unstyled div log panes in feature pages.
+- Build lines with `linesFromConnectionTest` or map SSE/json to `LogLine` with `inferLevelFromText`.
+- Toasts: `notifyConnectionTestResult` for connection tests; `notify.success` / `error` / `warning` for summaries only.
+- Pass `status="running" | "passed" | "failed"` when the parent knows overall state.
+- Terminal accepts `string[]` (treated as `info`) for quick migration only — prefer `LogLine[]`.
+
+## Example
+
+```tsx
+const [lines, setLines] = useState<LogLine[]>([]);
+// append: setLines((l) => [...l, { text: "Connected", level: "success" }]);
+<LiveLogTerminal lines={lines} status="running" />
+```
