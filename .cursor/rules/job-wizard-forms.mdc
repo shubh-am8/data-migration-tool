@@ -1,0 +1,38 @@
+---
+description: Job wizard form patterns — reusable inputs, sections, conflict verify, migration modes
+globs: "{apps/web/src/components/jobs/**,apps/web/src/components/ui/number-input.tsx,apps/web/src/components/ui/datetime-tz-field.tsx,apps/web/src/components/ui/duration-input.tsx,apps/web/src/lib/migration-mode-options.ts,apps/web/src/lib/duration-units.ts,apps/web/src/lib/datetime-tz.ts}"
+alwaysApply: false
+---
+
+# Job wizard forms
+
+## Migration modes (4)
+
+`HOT_ONLY`, `COLD_ONLY`, `HOT_THEN_COLD`, `COLD_THEN_HOT` — use `MIGRATION_MODE_OPTIONS`. Worker runs phases in order: `COLD_THEN_HOT` = cold then hot. Seed sessions map 1:1 via `LabSeedSessionService.mapScenario`.
+
+## Reusable inputs
+
+| Need | Component |
+|------|-----------|
+| Integer fields | `NumberInput` — never raw `type="number"` |
+| Range datetimes | `DateTimeTzField` — UTC/IST, stores ISO UTC |
+| Chunk durations | `DurationInput` — min/hr/day UI, API still `*ChunkDurationHours` |
+
+## Hot/Cold step sections
+
+`HotColdConfig` uses `FieldSet` + `FieldLegend`: Migration mode → Range → Timestamp → Chunk config.
+
+## ON CONFLICT verify
+
+- `POST /api/jobs/verify-conflict-index` — read-only `pg_index` check (PostgreSQL)
+- Step 4 **Next** blocked until `conflictVerified`
+- Logs via `LiveLogTerminal`; suggest `CREATE UNIQUE INDEX` on mismatch
+
+## Wizard layout
+
+- `WizardStepFooter` — sticky bottom nav on small screens
+- Tab content: `flex min-h-0 flex-1 flex-col` + scrollable body
+
+## Theming
+
+Colors/layout via `apps/web/src/app/globals.css` semantic tokens — no raw color classes in new form code.

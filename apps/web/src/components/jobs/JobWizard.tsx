@@ -14,6 +14,9 @@ import { FilterBuilder } from "./FilterBuilder";
 import { HotColdConfig } from "./HotColdConfig";
 import { ConflictConfig } from "./ConflictConfig";
 import { AlertConfig } from "./AlertConfig";
+import { WizardStepFooter } from "./WizardStepFooter";
+import { NumberInput } from "@/components/ui/number-input";
+import type { DateTimeTz } from "@/lib/datetime-tz";
 import { normalizeFilterRow } from "@/lib/filter-validation";
 import { apiFetch } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
@@ -75,11 +78,14 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [hotDays, setHotDays] = useState(7);
   const [tsColumn, setTsColumn] = useState("");
   const [rangeStart, setRangeStart] = useState("");
+  const [rangeStartTz, setRangeStartTz] = useState<DateTimeTz>("UTC");
   const [rangeEndMode, setRangeEndMode] = useState("NOW");
   const [rangeEnd, setRangeEnd] = useState("");
+  const [rangeEndTz, setRangeEndTz] = useState<DateTimeTz>("UTC");
   const [minChunkDurationHours, setMinChunkDurationHours] = useState(24);
   const [maxChunkDurationHours, setMaxChunkDurationHours] = useState(168);
   const [conflictColumns, setConflictColumns] = useState<string[]>([]);
+  const [conflictVerified, setConflictVerified] = useState(false);
   const [threadCount, setThreadCount] = useState(2);
   const [lifecycleAlertsEnabled, setLifecycleAlertsEnabled] = useState(true);
   const [progressIntervalMin, setProgressIntervalMin] = useState<number | "">(30);
@@ -322,12 +328,19 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       notify.warning("Complete this step first", gate.message);
       return;
     }
+    if (step === "4" && !conflictVerified) {
+      const msg = "Verify ON CONFLICT unique index before continuing";
+      setStepError(msg);
+      notify.warning(msg);
+      return;
+    }
     setStepError(null);
     setStep(String(Number(step) + 1));
   }
 
   function toInstant(value: string): string | null {
     if (!value) return null;
+    if (value.endsWith("Z") || value.includes("+")) return value;
     return new Date(value).toISOString();
   }
 
@@ -452,7 +465,7 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   }
 
   return (
-    <Tabs value={step} onValueChange={attemptStepChange}>
+    <Tabs value={step} onValueChange={attemptStepChange} className="flex min-h-0 flex-1 flex-col">
       <TabsList className="flex h-auto flex-wrap">
         <TabsTrigger value="1">Source & Dest</TabsTrigger>
         <TabsTrigger value="2">Schema & Table</TabsTrigger>
@@ -563,10 +576,12 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           </Field>
           <Field>
             <FieldLabel>Threads</FieldLabel>
-            <Input type="number" value={threadCount} onChange={(e) => setThreadCount(Number(e.target.value))} />
+            <NumberInput min={1} value={threadCount} onValueChange={setThreadCount} />
           </Field>
         </FieldGroup>
-        <Button onClick={goNext}>Next</Button>
+        <WizardStepFooter>
+          <Button onClick={goNext}>Next</Button>
+        </WizardStepFooter>
       </TabsContent>
 
       <TabsContent value="2" className="flex flex-col gap-4 pt-4">
@@ -575,8 +590,9 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
             <AlertTitle>Lab source schema ({LAB_SOURCE_SCHEMA})</AlertTitle>
             <AlertDescription>
               TEST jobs read from <strong>{LAB_SOURCE_SCHEMA}</strong> on{" "}
-              <code className="text-xs">migration_lab</code>. A matching table is auto-created in{" "}
-              <strong>{LAB_DEST_SCHEMA}</strong> when you save the job. View tables in{" "}
+              <code className="text-xs">migration_lab</code>. On save, a destination table{" "}
+              <code className="text-xs">{LAB_DEST_SCHEMA}.job_&lt;id&gt;</code> is created automatically.
+              View tables in{" "}
               <a href="/lab" className="text-sky-600 underline">
                 Lab Playground
               </a>
@@ -613,12 +629,9 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           error={tablesError}
           schemaSelected={Boolean(schema)}
         />
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => attemptStepChange("1")}>
-            Back
-          </Button>
+        <WizardStepFooter onBack={() => attemptStepChange("1")}>
           <Button onClick={goNext}>Next</Button>
-        </div>
+        </WizardStepFooter>
       </TabsContent>
 
       <TabsContent value="3" className="flex flex-col gap-4 pt-4">
@@ -634,52 +647,59 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           onChange={setFilters}
           loading={columnsLoading}
         />
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => attemptStepChange("2")}>
-            Back
-          </Button>
+        <WizardStepFooter onBack={() => attemptStepChange("2")}>
           <Button onClick={goNext}>Next</Button>
-        </div>
+        </WizardStepFooter>
       </TabsContent>
 
-      <TabsContent value="4" className="flex flex-col gap-4 pt-4">
-        <HotColdConfig
-          migrationMode={migrationMode}
-          hotDays={hotDays}
-          tsColumn={tsColumn}
-          timestampColumns={columns
-            .filter((c) => {
-              const t = c.dataType.toLowerCase();
-              return t.includes("timestamp") || t.includes("date") || t.includes("time");
-            })
-            .map((c) => c.name)}
-          rangeStart={rangeStart}
-          rangeEndMode={rangeEndMode}
-          rangeEnd={rangeEnd}
-          minChunkDurationHours={minChunkDurationHours}
-          maxChunkDurationHours={maxChunkDurationHours}
-          onChange={(p) => {
-            if (p.migrationMode !== undefined) setMigrationMode(p.migrationMode);
-            if (p.hotDays !== undefined) setHotDays(p.hotDays);
-            if (p.tsColumn !== undefined) setTsColumn(p.tsColumn);
-            if (p.rangeStart !== undefined) setRangeStart(p.rangeStart);
-            if (p.rangeEndMode !== undefined) setRangeEndMode(p.rangeEndMode);
-            if (p.rangeEnd !== undefined) setRangeEnd(p.rangeEnd);
-            if (p.minChunkDurationHours !== undefined) setMinChunkDurationHours(p.minChunkDurationHours);
-            if (p.maxChunkDurationHours !== undefined) setMaxChunkDurationHours(p.maxChunkDurationHours);
-          }}
-        />
-        <ConflictConfig
-          columns={columns.map((c) => c.name)}
-          selected={conflictColumns}
-          onChange={setConflictColumns}
-        />
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => attemptStepChange("3")}>
-            Back
-          </Button>
-          <Button onClick={goNext}>Next</Button>
+      <TabsContent value="4" className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+          <HotColdConfig
+            migrationMode={migrationMode}
+            hotDays={hotDays}
+            tsColumn={tsColumn}
+            timestampColumns={columns
+              .filter((c) => {
+                const t = c.dataType.toLowerCase();
+                return t.includes("timestamp") || t.includes("date") || t.includes("time");
+              })
+              .map((c) => c.name)}
+            rangeStart={rangeStart}
+            rangeStartTz={rangeStartTz}
+            rangeEndMode={rangeEndMode}
+            rangeEnd={rangeEnd}
+            rangeEndTz={rangeEndTz}
+            minChunkDurationHours={minChunkDurationHours}
+            maxChunkDurationHours={maxChunkDurationHours}
+            onChange={(p) => {
+              if (p.migrationMode !== undefined) setMigrationMode(p.migrationMode);
+              if (p.hotDays !== undefined) setHotDays(p.hotDays);
+              if (p.tsColumn !== undefined) setTsColumn(p.tsColumn);
+              if (p.rangeStart !== undefined) setRangeStart(p.rangeStart);
+              if (p.rangeStartTz !== undefined) setRangeStartTz(p.rangeStartTz);
+              if (p.rangeEndMode !== undefined) setRangeEndMode(p.rangeEndMode);
+              if (p.rangeEnd !== undefined) setRangeEnd(p.rangeEnd);
+              if (p.rangeEndTz !== undefined) setRangeEndTz(p.rangeEndTz);
+              if (p.minChunkDurationHours !== undefined) setMinChunkDurationHours(p.minChunkDurationHours);
+              if (p.maxChunkDurationHours !== undefined) setMaxChunkDurationHours(p.maxChunkDurationHours);
+            }}
+          />
+          <ConflictConfig
+            columns={columns.map((c) => c.name)}
+            selected={conflictColumns}
+            onChange={setConflictColumns}
+            sourceConnectionId={sourceId}
+            schemaName={schema}
+            sourceTable={effectiveTable}
+            verified={conflictVerified}
+            onVerifiedChange={setConflictVerified}
+          />
         </div>
+        <WizardStepFooter onBack={() => attemptStepChange("3")}>
+          <Button onClick={goNext} disabled={!conflictVerified}>
+            Next
+          </Button>
+        </WizardStepFooter>
       </TabsContent>
 
       <TabsContent value="5" className="flex flex-col gap-4 pt-4">
@@ -716,10 +736,7 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
             </Alert>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => attemptStepChange("4")}>
-            Back
-          </Button>
+        <WizardStepFooter onBack={() => attemptStepChange("4")}>
           <Button variant="success" onClick={saveJob} disabled={!jobId && !testPassed}>
             {jobId ? "Save Job" : "Add Job"}
           </Button>
@@ -728,7 +745,7 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
               Run Preflight
             </Button>
           )}
-        </div>
+        </WizardStepFooter>
       </TabsContent>
     </Tabs>
   );

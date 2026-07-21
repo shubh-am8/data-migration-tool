@@ -43,3 +43,4 @@ data/plugins/installed/
 
 # pnpm local content-addressable store (never commit)
 .pnpm-store/
+.dev/pids

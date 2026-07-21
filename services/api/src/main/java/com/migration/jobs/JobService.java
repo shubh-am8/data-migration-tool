@@ -8,6 +8,7 @@ import com.migration.connectors.ConnectionService;
 import com.migration.notifications.GspaceNotifier;
 import com.migration.simulation.SimulationConfig;
 import com.migration.marketplace.LabDestinationProvisioner;
+import com.migration.marketplace.LabSeedSessionService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -29,6 +30,7 @@ public class JobService {
     private final StringRedisTemplate redis;
     private final GspaceNotifier gspaceNotifier;
     private final LabDestinationProvisioner labDestinationProvisioner;
+    private final LabSeedSessionService labSeedSessionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JobService(JobRepository jobRepository, JobPhaseRepository phaseRepository,
@@ -36,7 +38,8 @@ public class JobService {
                       ConnectionService connectionService, ConnectorPluginRegistry pluginRegistry,
                       AppConfigService appConfigService, StringRedisTemplate redis,
                       GspaceNotifier gspaceNotifier,
-                      LabDestinationProvisioner labDestinationProvisioner) {
+                      LabDestinationProvisioner labDestinationProvisioner,
+                      LabSeedSessionService labSeedSessionService) {
         this.jobRepository = jobRepository;
         this.phaseRepository = phaseRepository;
         this.eventRepository = eventRepository;
@@ -47,6 +50,7 @@ public class JobService {
         this.redis = redis;
         this.gspaceNotifier = gspaceNotifier;
         this.labDestinationProvisioner = labDestinationProvisioner;
+        this.labSeedSessionService = labSeedSessionService;
     }
 
     public PageResponse<Map<String, Object>> list(Integer page, Integer size) {
@@ -73,6 +77,7 @@ public class JobService {
             throw new IllegalStateException("Failed to provision lab destination table: " + e.getMessage(), e);
         }
         initPhases(job);
+        labSeedSessionService.createForJob(job);
         saveAlertConfig(job.getId(), body);
         logEvent(job.getId(), "CREATED", null);
         return toDto(job);
@@ -188,6 +193,10 @@ public class JobService {
                 createPhase(job.getId(), PhaseType.HOT, ConflictMode.DO_UPDATE);
                 createPhase(job.getId(), PhaseType.COLD, ConflictMode.DO_NOTHING);
             }
+            case COLD_THEN_HOT -> {
+                createPhase(job.getId(), PhaseType.COLD, ConflictMode.DO_NOTHING);
+                createPhase(job.getId(), PhaseType.HOT, ConflictMode.DO_UPDATE);
+            }
         }
     }
 
@@ -227,7 +236,9 @@ public class JobService {
         if (job.getTsColumn() == null || job.getTsColumn().isBlank()) {
             throw new IllegalArgumentException("ts_column is required for time-chunked migrations");
         }
-        if ((job.getMigrationMode() == MigrationMode.HOT_ONLY || job.getMigrationMode() == MigrationMode.HOT_THEN_COLD)
+        if ((job.getMigrationMode() == MigrationMode.HOT_ONLY
+            || job.getMigrationMode() == MigrationMode.HOT_THEN_COLD
+            || job.getMigrationMode() == MigrationMode.COLD_THEN_HOT)
             && job.getHotDays() == null) {
             throw new IllegalArgumentException("hot migration requires hot_days");
         }

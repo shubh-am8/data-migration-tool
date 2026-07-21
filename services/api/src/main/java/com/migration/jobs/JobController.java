@@ -4,6 +4,7 @@ import com.migration.common.PageResponse;
 import com.migration.connectors.ExplainResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -11,9 +12,11 @@ import java.util.UUID;
 @RequestMapping("/api/jobs")
 public class JobController {
     private final JobService jobService;
+    private final ConflictIndexVerifier conflictIndexVerifier;
 
-    public JobController(JobService jobService) {
+    public JobController(JobService jobService, ConflictIndexVerifier conflictIndexVerifier) {
         this.jobService = jobService;
+        this.conflictIndexVerifier = conflictIndexVerifier;
     }
 
     @GetMapping
@@ -66,6 +69,16 @@ public class JobController {
     @PostMapping("/{id}/cancel")
     public Map<String, Object> cancel(@PathVariable UUID id) {
         return jobService.cancel(id);
+    }
+
+    @PostMapping("/verify-conflict-index")
+    public Map<String, Object> verifyConflictIndex(@RequestBody Map<String, Object> body) throws Exception {
+        UUID connectionId = UUID.fromString((String) body.get("sourceConnectionId"));
+        String schema = (String) body.get("schemaName");
+        String table = (String) body.get("sourceTable");
+        @SuppressWarnings("unchecked")
+        List<String> columns = (List<String>) body.get("conflictColumns");
+        return conflictIndexVerifier.verify(connectionId, schema, table, columns);
     }
 
     @GetMapping("/{id}/status")

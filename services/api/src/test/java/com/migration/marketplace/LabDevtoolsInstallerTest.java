@@ -36,4 +36,23 @@ class LabDevtoolsInstallerTest {
         Files.createDirectories(tmp.resolve("sql"));
         assertThrows(IOException.class, () -> LabDevtoolsInstaller.listSqlFiles(tmp));
     }
+
+    @Test
+    void splitStatementsSplitsMultipleStatements() {
+        String sql = """
+            -- comment
+            CREATE SCHEMA IF NOT EXISTS test_source;
+            CREATE TABLE foo (id INT);
+            """;
+        List<String> stmts = LabDevtoolsInstaller.splitStatements(sql);
+        assertEquals(2, stmts.size());
+        assertTrue(stmts.get(0).contains("test_source"));
+        assertTrue(stmts.get(1).contains("CREATE TABLE foo"));
+    }
+
+    @Test
+    void splitStatementsIgnoresCommentOnlyLines() {
+        List<String> stmts = LabDevtoolsInstaller.splitStatements("-- only comment\n\n");
+        assertTrue(stmts.isEmpty());
+    }
 }

@@ -1,8 +1,13 @@
 "use client";
 
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { DateTimeTzField } from "@/components/ui/datetime-tz-field";
+import { DurationInput } from "@/components/ui/duration-input";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { OptionSelect } from "@/components/ui/option-select";
+import { Separator } from "@/components/ui/separator";
+import type { DateTimeTz } from "@/lib/datetime-tz";
 import { MIGRATION_MODE_OPTIONS, RANGE_END_MODE_OPTIONS } from "@/lib/migration-mode-options";
 
 export interface HotColdConfigPatch {
@@ -10,8 +15,10 @@ export interface HotColdConfigPatch {
   hotDays?: number;
   tsColumn?: string;
   rangeStart?: string;
+  rangeStartTz?: DateTimeTz;
   rangeEndMode?: string;
   rangeEnd?: string;
+  rangeEndTz?: DateTimeTz;
   minChunkDurationHours?: number;
   maxChunkDurationHours?: number;
 }
@@ -22,8 +29,10 @@ interface HotColdConfigProps {
   tsColumn: string;
   timestampColumns?: string[];
   rangeStart: string;
+  rangeStartTz: DateTimeTz;
   rangeEndMode: string;
   rangeEnd: string;
+  rangeEndTz: DateTimeTz;
   minChunkDurationHours: number;
   maxChunkDurationHours: number;
   onChange: (patch: HotColdConfigPatch) => void;
@@ -35,8 +44,10 @@ export function HotColdConfig({
   tsColumn,
   timestampColumns = [],
   rangeStart,
+  rangeStartTz,
   rangeEndMode,
   rangeEnd,
+  rangeEndTz,
   minChunkDurationHours,
   maxChunkDurationHours,
   onChange,
@@ -45,82 +56,98 @@ export function HotColdConfig({
   const showHot = migrationMode !== "COLD_ONLY";
 
   return (
-    <FieldGroup>
-      <Field>
-        <FieldLabel>Migration Mode</FieldLabel>
-        <OptionSelect
-          value={migrationMode}
-          onValueChange={(v) => onChange({ migrationMode: v })}
-          options={[...MIGRATION_MODE_OPTIONS]}
-          placeholder="Select migration mode"
-        />
-      </Field>
-      {showRange && (
-        <>
+    <div className="flex flex-col gap-6">
+      <FieldSet>
+        <FieldLegend>Migration mode</FieldLegend>
+        <FieldGroup>
           <Field>
-            <FieldLabel>Range start</FieldLabel>
-            <Input
-              type="datetime-local"
-              value={rangeStart}
-              onChange={(e) => onChange({ rangeStart: e.target.value })}
-            />
-          </Field>
-          <Field>
-            <FieldLabel>End mode</FieldLabel>
+            <FieldLabel>Mode</FieldLabel>
             <OptionSelect
-              value={rangeEndMode}
-              onValueChange={(v) => onChange({ rangeEndMode: v })}
-              options={[...RANGE_END_MODE_OPTIONS]}
-              placeholder="Select end mode"
+              value={migrationMode}
+              onValueChange={(v) => onChange({ migrationMode: v })}
+              options={[...MIGRATION_MODE_OPTIONS]}
+              placeholder="Select migration mode"
             />
           </Field>
-          {rangeEndMode === "FIXED" && (
+          {showHot && (
             <Field>
-              <FieldLabel>Range end</FieldLabel>
-              <Input
-                type="datetime-local"
-                value={rangeEnd}
-                onChange={(e) => onChange({ rangeEnd: e.target.value })}
-              />
+              <FieldLabel>Hot window (days)</FieldLabel>
+              <NumberInput min={0} value={hotDays} onValueChange={(v) => onChange({ hotDays: v })} />
             </Field>
           )}
+        </FieldGroup>
+      </FieldSet>
+
+      {showRange && (
+        <>
+          <Separator />
+          <FieldSet>
+            <FieldLegend>Range</FieldLegend>
+            <FieldGroup>
+              <DateTimeTzField
+                label="Range start"
+                isoValue={rangeStart}
+                tz={rangeStartTz}
+                onChange={(iso, tz) => onChange({ rangeStart: iso, rangeStartTz: tz })}
+              />
+              <Field>
+                <FieldLabel>End mode</FieldLabel>
+                <OptionSelect
+                  value={rangeEndMode}
+                  onValueChange={(v) => onChange({ rangeEndMode: v })}
+                  options={[...RANGE_END_MODE_OPTIONS]}
+                  placeholder="Select end mode"
+                />
+              </Field>
+              {rangeEndMode === "FIXED" && (
+                <DateTimeTzField
+                  label="Range end"
+                  isoValue={rangeEnd}
+                  tz={rangeEndTz}
+                  onChange={(iso, tz) => onChange({ rangeEnd: iso, rangeEndTz: tz })}
+                />
+              )}
+            </FieldGroup>
+          </FieldSet>
         </>
       )}
-      {showHot && (
-        <Field>
-          <FieldLabel>Hot window (days)</FieldLabel>
-          <Input type="number" value={hotDays} onChange={(e) => onChange({ hotDays: Number(e.target.value) })} />
-        </Field>
-      )}
-      <Field>
-        <FieldLabel>Timestamp column *</FieldLabel>
-        {timestampColumns.length > 0 ? (
-          <OptionSelect
-            value={tsColumn}
-            onValueChange={(v) => onChange({ tsColumn: v })}
-            options={timestampColumns.map((c) => ({ value: c, label: c }))}
-            placeholder="Select timestamp column"
+
+      <Separator />
+      <FieldSet>
+        <FieldLegend>Timestamp</FieldLegend>
+        <FieldGroup>
+          <Field>
+            <FieldLabel>Timestamp column *</FieldLabel>
+            {timestampColumns.length > 0 ? (
+              <OptionSelect
+                value={tsColumn}
+                onValueChange={(v) => onChange({ tsColumn: v })}
+                options={timestampColumns.map((c) => ({ value: c, label: c }))}
+                placeholder="Select timestamp column"
+              />
+            ) : (
+              <Input required value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
+            )}
+          </Field>
+        </FieldGroup>
+      </FieldSet>
+
+      <Separator />
+      <FieldSet>
+        <FieldLegend>Chunk config</FieldLegend>
+        <FieldGroup>
+          <DurationInput
+            label="Min chunk duration"
+            hours={minChunkDurationHours}
+            onHoursChange={(h) => onChange({ minChunkDurationHours: h })}
           />
-        ) : (
-          <Input required value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
-        )}
-      </Field>
-      <Field>
-        <FieldLabel>Min chunk duration (hours)</FieldLabel>
-        <Input
-          type="number"
-          value={minChunkDurationHours}
-          onChange={(e) => onChange({ minChunkDurationHours: Number(e.target.value) })}
-        />
-      </Field>
-      <Field>
-        <FieldLabel>Max chunk duration (hours)</FieldLabel>
-        <Input
-          type="number"
-          value={maxChunkDurationHours}
-          onChange={(e) => onChange({ maxChunkDurationHours: Number(e.target.value) })}
-        />
-      </Field>
-    </FieldGroup>
+          <DurationInput
+            label="Max chunk duration"
+            hours={maxChunkDurationHours}
+            onHoursChange={(h) => onChange({ maxChunkDurationHours: h })}
+          />
+        </FieldGroup>
+      </FieldSet>
+    </div>
   );
 }

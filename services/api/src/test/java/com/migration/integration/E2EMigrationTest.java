@@ -21,6 +21,7 @@ class E2EMigrationTest {
 
     @Test
     void hotColdModesCoverAllPhases() {
-        assertEquals(3, MigrationMode.values().length);
+        assertEquals(4, MigrationMode.values().length);
+        assertNotNull(MigrationMode.COLD_THEN_HOT);
     }
 }

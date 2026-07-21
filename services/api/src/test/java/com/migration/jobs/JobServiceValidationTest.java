@@ -150,6 +150,6 @@ class JobServiceValidationTest {
         AppConfigService appConfigService = mock(AppConfigService.class);
         when(appConfigService.get("min_threads_per_job")).thenReturn("1");
         when(appConfigService.get("max_threads_per_job")).thenReturn("16");
-        return new JobService(null, null, null, null, null, null, appConfigService, null, null, null);
+        return new JobService(null, null, null, null, null, null, appConfigService, null, null, null, null);
     }
 }

@@ -97,6 +97,11 @@ public class HotColdManager {
 
     private List<JobPhaseEntity> orderedPhases(MigrationMode mode, List<JobPhaseEntity> phases) {
         List<JobPhaseEntity> ordered = new ArrayList<>();
+        if (mode == MigrationMode.COLD_THEN_HOT) {
+            phases.stream().filter(p -> p.getPhase() == PhaseType.COLD).findFirst().ifPresent(ordered::add);
+            phases.stream().filter(p -> p.getPhase() == PhaseType.HOT).findFirst().ifPresent(ordered::add);
+            return ordered;
+        }
         if (mode == MigrationMode.COLD_ONLY || mode == MigrationMode.HOT_THEN_COLD || mode == MigrationMode.HOT_ONLY) {
             phases.stream().filter(p -> p.getPhase() == PhaseType.HOT).findFirst().ifPresent(ordered::add);
         }

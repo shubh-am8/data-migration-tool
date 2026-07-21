@@ -8,6 +8,7 @@ import com.migration.engine.HotColdManager;
 import com.migration.engine.ReconciliationService;
 import com.migration.engine.SimulationEngine;
 import com.migration.jobs.*;
+import com.migration.lab.LabDestinationEnsurer;
 import com.migration.simulation.SimulationConfig;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -43,6 +44,7 @@ public class JobQueueConsumer {
     private final String workerId;
     private final String gspaceUrl;
     private final ReconciliationService reconciliationService;
+    private final LabDestinationEnsurer labDestinationEnsurer;
     private final RestClient restClient = RestClient.create();
 
     public JobQueueConsumer(StringRedisTemplate redis,
@@ -55,7 +57,10 @@ public class JobQueueConsumer {
                             ConnectorPluginRegistry pluginRegistry,
                             SimulationEngine simulationEngine,
                             @Value("${app.worker-id}") String workerId,
-                            @Value("${app.gspace-webhook-url:}") String gspaceUrl) {
+                            @Value("${app.gspace-webhook-url:}") String gspaceUrl,
+                            @Value("${app.lab-db.url:jdbc:postgresql://localhost:5433/migration_lab}") String labDbUrl,
+                            @Value("${app.lab-db.user:migration}") String labDbUser,
+                            @Value("${app.lab-db.password:migration}") String labDbPassword) {
         this.redis = redis;
         this.jobRepository = jobRepository;
         this.phaseRepository = phaseRepository;
@@ -68,6 +73,7 @@ public class JobQueueConsumer {
         this.workerId = workerId;
         this.gspaceUrl = gspaceUrl;
         this.reconciliationService = new ReconciliationService();
+        this.labDestinationEnsurer = new LabDestinationEnsurer(labDbUrl, labDbUser, labDbPassword);
     }
 
     @Scheduled(fixedDelayString = "${app.poll-interval-ms:2000}")
@@ -112,6 +118,11 @@ public class JobQueueConsumer {
         if (SimulationConfig.isSimulation(job.getConfigJson())) {
             runSimulation(job);
             return;
+        }
+
+        if (job.getRunMode() == JobRunMode.TEST) {
+            labDestinationEnsurer.ensure(job);
+            jobRepository.save(job);
         }
 
         List<JobPhaseEntity> phases = phaseRepository.findByJobId(jobId);

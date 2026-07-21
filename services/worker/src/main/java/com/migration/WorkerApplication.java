@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EntityScan(basePackages = {"com.migration.jobs", "com.migration.connectors", "com.migration.queue"})
+@EntityScan(basePackages = {"com.migration.jobs", "com.migration.connectors", "com.migration.queue", "com.migration.lab"})
 public class WorkerApplication {
     public static void main(String[] args) {
         org.springframework.boot.SpringApplication.run(WorkerApplication.class, args);

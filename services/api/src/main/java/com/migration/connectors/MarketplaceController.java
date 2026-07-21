@@ -130,6 +130,15 @@ public class MarketplaceController {
         if ("lab-devtools".equals(toolId)) {
             try {
                 labDevtoolsInstaller.apply(pluginDirectory.toolsDir().resolve(toolId));
+                LabDevtoolsInstaller.InstallVerification verification = labDevtoolsInstaller.verifyInstalled();
+                if (!verification.isValid()) {
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Lab DB setup incomplete: test_source has "
+                            + verification.sourceTableCount()
+                            + " table(s), expected at least 2. Try Repair from Lab Playground.");
+                }
+            } catch (ResponseStatusException e) {
+                throw e;
             } catch (Exception e) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Lab Dev Tools installed but lab DB setup failed: " + e.getMessage());

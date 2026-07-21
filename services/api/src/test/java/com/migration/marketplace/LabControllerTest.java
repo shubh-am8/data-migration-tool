@@ -21,6 +21,15 @@ class LabControllerTest {
     @Mock
     private LabAdminService labAdmin;
 
+    @Mock
+    private LabDevtoolsInstaller labDevtoolsInstaller;
+
+    @Mock
+    private com.migration.connectors.PluginDirectoryService pluginDirectory;
+
+    @Mock
+    private com.migration.auth.UserService userService;
+
     @InjectMocks
     private LabController controller;
 

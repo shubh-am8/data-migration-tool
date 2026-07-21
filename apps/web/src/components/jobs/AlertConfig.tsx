@@ -2,6 +2,7 @@
 
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 
 interface AlertConfigProps {
   lifecycleEnabled: boolean;
@@ -22,8 +23,11 @@ export function AlertConfig({ lifecycleEnabled, progressIntervalMin, webhookOver
       </Field>
       <Field>
         <FieldLabel>Progress alert interval (minutes)</FieldLabel>
-        <Input type="number" value={progressIntervalMin} placeholder="Optional"
-          onChange={(e) => onChange({ progressIntervalMin: e.target.value ? Number(e.target.value) : "" })} />
+        <NumberInput
+          min={1}
+          value={typeof progressIntervalMin === "number" ? progressIntervalMin : 0}
+          onValueChange={(v) => onChange({ progressIntervalMin: v > 0 ? v : "" })}
+        />
       </Field>
       <Field>
         <FieldLabel>GSpace webhook override</FieldLabel>

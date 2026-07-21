@@ -29,11 +29,25 @@ Constants live in `com.migration.jobs.LabSchemas` (domain). Frontend mirrors via
 - `orders_hot_cold` — `updated_at` timestamp; seed = mixed hot/cold rows
 - Seed SQL in `marketplace/plugins/lab-devtools/sql/002_lab_seed.sql` (idempotent inserts)
 
+## Seeding
+
+| Mechanism | When | Control |
+|-----------|------|---------|
+| Install SQL (`002_lab_seed.sql`) | Lab Dev Tools install/repair | Static baseline (~200 rows per table) |
+| `lab_seed_sessions` | Per TEST migration job (not `SIMULATE`) | Lab Playground: start/pause/resume/stop, rate sliders |
+| `config_json.kind=SIMULATE` | One-shot wizard checkbox | Runs as a normal job, not a seed session |
+
+- Flyway table `lab_seed_sessions` (V11): `job_id` PK, `status` (`PAUSED`/`RUNNING`/`STOPPED`), `inserts_per_minute`, `updates_per_minute`, row counters.
+- API: `GET /api/lab/seed-sessions`, `POST …/{jobId}/start|pause|resume|stop`, `PATCH …/{jobId}` (rates).
+- Worker `LabSeedScheduler` ticks RUNNING sessions into `test_source` only.
+- Uninstall Lab Dev Tools stops all RUNNING sessions before dropping schemas.
+
 ## Lab API (`/api/lab`)
 
 - Introspection: `/schemas`, `/schemas/{schema}/tables`, `…/columns` — schemas limited to `test_source`, `test_destination`
 - Playground: `GET /api/lab/tables/{schema}` returns row count + size bytes
 - Mutations ( **`test_destination` only** ): `POST …/tables/{table}/truncate`, `POST …/tables/{table}/drop`, `POST /api/lab/destination/truncate-all`, `POST /api/lab/destination/drop-all`
+- Repair: `POST /api/lab/repair` (admin) re-applies lab-devtools SQL without marketplace uninstall
 
 ## UI
 
