@@ -40,6 +40,11 @@ public class JobEntity {
     @Column(columnDefinition = "job_status")
     private JobStatus status = JobStatus.DRAFT;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "run_mode", columnDefinition = "job_run_mode")
+    private JobRunMode runMode = JobRunMode.TEST;
+
     @Column(name = "thread_count")
     private int threadCount = 1;
 
@@ -108,6 +113,8 @@ public class JobEntity {
     public void setMigrationMode(MigrationMode migrationMode) { this.migrationMode = migrationMode; }
     public JobStatus getStatus() { return status; }
     public void setStatus(JobStatus status) { this.status = status; }
+    public JobRunMode getRunMode() { return runMode; }
+    public void setRunMode(JobRunMode runMode) { this.runMode = runMode; }
     public int getThreadCount() { return threadCount; }
     public void setThreadCount(int threadCount) { this.threadCount = threadCount; }
     public Integer getHotDays() { return hotDays; }

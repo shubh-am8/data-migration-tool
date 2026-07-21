@@ -1,0 +1,61 @@
+---
+description: migration-domain dependency, imports, and package placement for shared Java types
+globs: "{services/**/*.java,packages/**/*.java}"
+alwaysApply: false
+---
+
+# Domain module imports & dependencies
+
+Shared types live in **`packages/domain`** (`migration-domain`). API and worker consume them as a Maven dependency — not as same-source-tree classes.
+
+## Maven dependency (required)
+
+`services/api/pom.xml` and `services/worker/pom.xml` must declare:
+
+```xml
+<dependency>
+  <groupId>com.migration</groupId>
+  <artifactId>migration-domain</artifactId>
+  <version>${project.version}</version>
+</dependency>
+```
+
+When adding a new shared type in domain, rebuild before compiling consumers:
+
+```bash
+mvn -pl packages/domain install -DskipTests
+```
+
+## Always import domain types in API/worker
+
+In `services/api` or `services/worker`, **always add an explicit import** when using a class from `migration-domain`. Do not assume same-package resolution.
+
+```java
+// ❌ BAD — SimulationConfig is in domain, not in services/api
+package com.migration.jobs;
+// missing import; IDE may show "cannot be resolved"
+return SimulationConfig.isSimulation(job.getConfigJson());
+
+// ✅ GOOD
+package com.migration.jobs;
+import com.migration.simulation.SimulationConfig;
+return SimulationConfig.isSimulation(job.getConfigJson());
+```
+
+## Avoid split packages
+
+Do **not** add new shared types under `com.migration.jobs` in domain if API already has `com.migration.jobs.*` services (`JobService`, `JobController`, …). Split packages break IDE resolution even when Maven compiles.
+
+Put new shared types in a dedicated domain package:
+
+| Kind | Package example |
+|------|-----------------|
+| JPA entities / enums | `com.migration.jobs` (existing — already shared) |
+| Guards, parsers, config DTOs | `com.migration.simulation`, `com.migration.jobs.config`, etc. |
+
+## Checklist when adding shared Java code
+
+1. Type belongs in `packages/domain`, not duplicated in api/worker.
+2. Consumer `pom.xml` has `migration-domain` dependency.
+3. Consumer `.java` file has explicit `import com.migration.<pkg>.<Type>;`.
+4. Run domain tests + consumer compile/tests.

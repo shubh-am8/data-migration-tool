@@ -3,7 +3,6 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY packages packages
-COPY connectors connectors
 COPY services services
 RUN mvn -pl services/api,services/worker -am package -DskipTests -q
 
@@ -28,8 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends supervisor debi
 WORKDIR /app
 COPY --from=build /build/services/api/target/migration-api-*.jar /app/api.jar
 COPY --from=build /build/services/worker/target/migration-worker-*.jar /app/worker.jar
-# Seed dir for bundled connector JARs (see PluginDirectoryService#ensureBundledPostgresql).
-COPY --from=build /build/connectors/postgresql/target/postgresql-connector-*.jar /app/plugins-seed/
+# Connectors are not bundled in this image — install via the Marketplace at runtime
+# (see marketplace/, PluginDirectoryService#ensureBundledPostgresql).
 COPY --from=build-web /app/.next/standalone /app/web
 COPY --from=build-web /app/.next/static /app/web/.next/static
 COPY --from=build-web /app/public /app/web/public

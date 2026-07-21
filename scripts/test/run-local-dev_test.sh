@@ -32,8 +32,23 @@ fi
 
 grep -q 'prepare_dev_stack()' "${ROOT}/scripts/run-local-dev.sh" || fail "run-local-dev.sh must define prepare_dev_stack"
 grep -q 'prepare_dev_stack "${MODE}"' "${ROOT}/scripts/run-local-dev.sh" || fail "main must call prepare_dev_stack before starts"
-grep -q 'stop_infra' "${ROOT}/scripts/run-local-dev.sh" || fail "prepare must stop infra for backend/all"
 pass "prepare_dev_stack wired in main flow"
+
+if ! grep -q 'KEEP_INFRA=true' "${ROOT}/scripts/run-local-dev.sh"; then
+  fail "KEEP_INFRA must default to true so Docker survives app exit"
+else
+  pass "KEEP_INFRA defaults to true"
+fi
+if grep -A20 'prepare_dev_stack()' "${ROOT}/scripts/run-local-dev.sh" | grep -q 'stop_infra'; then
+  fail "prepare_dev_stack must not call stop_infra"
+else
+  pass "prepare_dev_stack leaves Docker alone"
+fi
+if grep -A15 'on_exit()' "${ROOT}/scripts/run-local-dev.sh" | grep -q 'stop_infra' && ! grep -q 'STOP_INFRA_ON_EXIT' "${ROOT}/scripts/run-local-dev.sh"; then
+  fail "on_exit must not stop infra unless STOP_INFRA_ON_EXIT"
+else
+  pass "on_exit gated by STOP_INFRA_ON_EXIT"
+fi
 
 grep -q 'rm -rf "${ROOT_DIR}/apps/web/.next"' "${ROOT}/scripts/run-local-dev.sh" || fail "start_frontend must clear apps/web/.next before next dev"
 pass "start_frontend clears apps/web/.next cache"

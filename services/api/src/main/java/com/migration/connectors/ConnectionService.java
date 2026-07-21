@@ -47,6 +47,11 @@ public class ConnectionService {
 
     @Transactional
     public Map<String, Object> create(String pluginId, String name, Map<String, String> config) {
+        return create(pluginId, name, config, false);
+    }
+
+    @Transactional
+    public Map<String, Object> create(String pluginId, String name, Map<String, String> config, boolean sandbox) {
         requireInstalled(pluginId);
         Map<String, String> normalized = withPoolDefaults(config);
         ConnectorPlugin plugin = pluginRegistry.require(pluginId);
@@ -58,12 +63,18 @@ public class ConnectionService {
         entity.setPluginId(pluginId);
         entity.setName(name);
         entity.setConfigEncrypted(secretCipher.encrypt(toJson(normalized)));
+        entity.setSandbox(sandbox);
         entity = connectionRepository.save(entity);
         return toPublicDto(entity);
     }
 
     @Transactional
     public Map<String, Object> update(UUID id, String name, Map<String, String> config) {
+        return update(id, name, config, null);
+    }
+
+    @Transactional
+    public Map<String, Object> update(UUID id, String name, Map<String, String> config, Boolean sandbox) {
         ConnectionEntity entity = connectionRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Connection not found"));
         requireInstalled(entity.getPluginId());
@@ -77,6 +88,7 @@ public class ConnectionService {
             }
             entity.setConfigEncrypted(secretCipher.encrypt(toJson(normalized)));
         }
+        if (sandbox != null) entity.setSandbox(sandbox);
         entity.setUpdatedAt(Instant.now());
         return toPublicDto(connectionRepository.save(entity));
     }
@@ -155,6 +167,7 @@ public class ConnectionService {
         dto.put("id", entity.getId());
         dto.put("pluginId", entity.getPluginId());
         dto.put("name", entity.getName());
+        dto.put("sandbox", entity.isSandbox());
         dto.put("config", Map.of("password", "REDACTED"));
         dto.put("createdAt", entity.getCreatedAt());
         dto.put("updatedAt", entity.getUpdatedAt());

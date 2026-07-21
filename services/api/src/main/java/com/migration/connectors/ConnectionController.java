@@ -32,7 +32,8 @@ public class ConnectionController {
         String name = (String) body.get("name");
         @SuppressWarnings("unchecked")
         Map<String, String> config = (Map<String, String>) body.get("config");
-        return connectionService.create(pluginId, name, config);
+        boolean sandbox = Boolean.TRUE.equals(body.get("sandbox"));
+        return connectionService.create(pluginId, name, config, sandbox);
     }
 
     @PutMapping("/{id}")
@@ -40,7 +41,8 @@ public class ConnectionController {
         String name = (String) body.get("name");
         @SuppressWarnings("unchecked")
         Map<String, String> config = body.containsKey("config") ? (Map<String, String>) body.get("config") : null;
-        return connectionService.update(id, name, config);
+        Boolean sandbox = body.containsKey("sandbox") ? Boolean.TRUE.equals(body.get("sandbox")) : null;
+        return connectionService.update(id, name, config, sandbox);
     }
 
     @DeleteMapping("/{id}")

@@ -27,7 +27,6 @@
     <modules>
         <module>packages/connector-sdk</module>
         <module>packages/domain</module>
-        <module>connectors/postgresql</module>
         <module>services/api</module>
         <module>services/worker</module>
     </modules>

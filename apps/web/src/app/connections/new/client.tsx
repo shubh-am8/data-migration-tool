@@ -60,14 +60,14 @@ export default function NewConnectionClient() {
     else notify.error(result.message);
   }
 
-  async function handleSubmit(values: ConnectionFormValues) {
+  async function handleSubmit(values: ConnectionFormValues, sandbox: boolean) {
     if (!pluginId) {
       notify.error("Select an installed connector first");
       return;
     }
     await apiFetch("/api/connections", {
       method: "POST",
-      body: JSON.stringify({ pluginId, name: values.name, config: valuesToConfig(values) }),
+      body: JSON.stringify({ pluginId, name: values.name, config: valuesToConfig(values), sandbox }),
     });
     notify.success("Connection saved");
     router.push("/connections");

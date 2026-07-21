@@ -6,6 +6,7 @@ import com.migration.config.AppConfigService;
 import com.migration.connectors.*;
 import com.migration.connectors.ConnectionService;
 import com.migration.notifications.GspaceNotifier;
+import com.migration.simulation.SimulationConfig;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -224,6 +225,19 @@ public class JobService {
             throw new IllegalArgumentException("conflict_columns required");
         }
         validateRangeChunks(job);
+        validateRunMode(job);
+    }
+
+    private void validateRunMode(JobEntity job) {
+        if (job.getSourceConnectionId() == null || job.getDestConnectionId() == null) return;
+        JobRunMode mode = job.getRunMode() == null ? JobRunMode.TEST : job.getRunMode();
+        boolean sourceSandbox = connectionService.getEntity(job.getSourceConnectionId()).isSandbox();
+        boolean destSandbox = connectionService.getEntity(job.getDestConnectionId()).isSandbox();
+        JobRunModeGuard.validate(mode, sourceSandbox, destSandbox, job.getSchemaName(), isSimulation(job));
+    }
+
+    private boolean isSimulation(JobEntity job) {
+        return SimulationConfig.isSimulation(job.getConfigJson());
     }
 
     static void validateRangeChunks(JobEntity job) {
@@ -243,11 +257,12 @@ public class JobService {
     }
 
     @SuppressWarnings("unchecked")
-    private void applyBody(JobEntity job, Map<String, Object> body) {
+    void applyBody(JobEntity job, Map<String, Object> body) {
         if (body.containsKey("name")) job.setName((String) body.get("name"));
         if (body.containsKey("sourceConnectionId")) job.setSourceConnectionId(UUID.fromString((String) body.get("sourceConnectionId")));
         if (body.containsKey("destConnectionId")) job.setDestConnectionId(UUID.fromString((String) body.get("destConnectionId")));
         if (body.containsKey("migrationMode")) job.setMigrationMode(MigrationMode.valueOf((String) body.get("migrationMode")));
+        if (body.containsKey("runMode")) job.setRunMode(JobRunMode.valueOf((String) body.get("runMode")));
         if (body.containsKey("threadCount")) job.setThreadCount(((Number) body.get("threadCount")).intValue());
         if (body.containsKey("hotDays")) job.setHotDays(((Number) body.get("hotDays")).intValue());
         if (body.containsKey("rangeStart")) job.setRangeStart(body.get("rangeStart") == null ? null : Instant.parse((String) body.get("rangeStart")));
@@ -264,6 +279,14 @@ public class JobService {
         if (body.containsKey("filters")) {
             try {
                 job.setFiltersJson(objectMapper.writeValueAsString(body.get("filters")));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (body.containsKey("configJson")) {
+            Object configJson = body.get("configJson");
+            try {
+                job.setConfigJson(configJson == null ? "{}" : objectMapper.writeValueAsString(configJson));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -285,6 +308,7 @@ public class JobService {
         dto.put("sourceConnectionId", job.getSourceConnectionId());
         dto.put("destConnectionId", job.getDestConnectionId());
         dto.put("migrationMode", job.getMigrationMode());
+        dto.put("runMode", job.getRunMode());
         dto.put("status", job.getStatus());
         dto.put("threadCount", job.getThreadCount());
         dto.put("hotDays", job.getHotDays());
