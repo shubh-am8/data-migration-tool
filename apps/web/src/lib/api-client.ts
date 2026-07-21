@@ -20,6 +20,15 @@ export async function apiFetch<T>(
   }
   if (!res.ok) {
     const text = await res.text();
+    if (text.startsWith("{")) {
+      try {
+        const json = JSON.parse(text) as { error?: string; message?: string };
+        const msg = json.error ?? json.message;
+        if (msg) throw new Error(msg);
+      } catch (e) {
+        if (e instanceof Error && !(e instanceof SyntaxError)) throw e;
+      }
+    }
     throw new Error(text || `API error ${res.status}`);
   }
   if (res.status === 204) return undefined as T;

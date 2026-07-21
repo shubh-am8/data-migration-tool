@@ -60,16 +60,20 @@ export default function EditConnectionPage() {
   }
 
   async function handleSubmit(values: ConnectionFormValues, sandbox: boolean) {
-    await apiFetch(`/api/connections/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        name: values.name,
-        config: valuesToConfig(values),
-        sandbox,
-      }),
-    });
-    notify.success("Connection updated");
-    router.push("/connections");
+    try {
+      await apiFetch(`/api/connections/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: values.name,
+          config: valuesToConfig(values),
+          sandbox,
+        }),
+      });
+      notify.success("Connection updated");
+      router.push("/connections");
+    } catch (e) {
+      notify.error("Failed to update connection", e instanceof Error ? e.message : String(e));
+    }
   }
 
   if (loading) {
@@ -92,7 +96,9 @@ export default function EditConnectionPage() {
 
   const initial: ConnectionFormValues = {
     name: connection.name,
-    ...connection.config,
+    ...Object.fromEntries(
+      Object.entries(connection.config ?? {}).map(([k, v]) => [k, v == null ? "" : String(v)])
+    ),
   };
 
   return (
