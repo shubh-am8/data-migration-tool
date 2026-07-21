@@ -33,6 +33,8 @@ import {
   simulationPreset,
   type SimulationScenario,
 } from "@/lib/simulation-options";
+import { fetchLabColumns, fetchLabSchemas, fetchLabTables } from "@/lib/job-wizard-lab";
+import { isLabSchema } from "@/lib/lab-metadata";
 import type { PageResponse } from "@/components/shared/PaginationBar";
 
 interface JobWizardProps {
@@ -54,8 +56,12 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [destId, setDestId] = useState("");
   const [apiSchemas, setApiSchemas] = useState<string[]>([]);
   const [labSchemas, setLabSchemas] = useState<string[]>([]);
+  const [schemasLoading, setSchemasLoading] = useState(false);
+  const [schemasError, setSchemasError] = useState<string | null>(null);
   const [schema, setSchema] = useState("");
   const [tables, setTables] = useState<TableEntry[]>([]);
+  const [tablesLoading, setTablesLoading] = useState(false);
+  const [tablesError, setTablesError] = useState<string | null>(null);
   const [table, setTable] = useState("");
   const [isPartition, setIsPartition] = useState(false);
   const [partitionName, setPartitionName] = useState("");
@@ -140,6 +146,13 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
     setTsColumn(preset.table === "orders_cold" ? "created_at" : "updated_at");
   }, []);
 
+  function onSchemaChange(next: string) {
+    setSchema(next);
+    setTable("");
+    setIsPartition(false);
+    setPartitionName("");
+  }
+
   useEffect(() => {
     apiFetch<PageResponse<{ id: string; name: string }> | Array<{ id: string; name: string }>>(
       "/api/connections?page=0&size=100"
@@ -151,11 +164,22 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   useEffect(() => {
     if (runMode !== "TEST") {
       setLabSchemas([]);
+      setSchemasError(null);
+      setSchemasLoading(false);
       return;
     }
-    apiFetch<{ schemas: string[] }>("/api/lab/schemas")
-      .then((r) => setLabSchemas(r.schemas ?? []))
-      .catch(() => setLabSchemas([...LAB_SCHEMAS]));
+    let cancelled = false;
+    setSchemasLoading(true);
+    setSchemasError(null);
+    fetchLabSchemas().then((result) => {
+      if (cancelled) return;
+      setLabSchemas(result.data);
+      setSchemasError(result.fromFallback ? result.error ?? null : null);
+      setSchemasLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [runMode]);
 
   useEffect(() => {
@@ -179,22 +203,44 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   useEffect(() => {
     if (!schema) {
       setTables([]);
+      setTablesError(null);
+      setTablesLoading(false);
       return;
     }
     if (runMode === "TEST") {
-      apiFetch<{ tables: TableEntry[] }>(`/api/lab/schemas/${encodeURIComponent(schema)}/tables`)
-        .then((r) => setTables(r.tables ?? []))
-        .catch(() => setTables(simulate ? [...LAB_SIMULATION_TABLES] : []));
-      return;
+      let cancelled = false;
+      setTablesLoading(true);
+      setTablesError(null);
+      fetchLabTables(schema).then((result) => {
+        if (cancelled) return;
+        setTables(result.data);
+        setTablesError(result.fromFallback ? result.error ?? null : null);
+        setTablesLoading(false);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     if (!sourceId) {
       setTables([]);
       return;
     }
+    setTablesLoading(true);
+    setTablesError(null);
     apiFetch<{ tables: TableEntry[] }>(`/api/connections/${sourceId}/schemas/${schema}/tables`)
       .then((r) => setTables(r.tables ?? []))
-      .catch(() => setTables([]));
-  }, [sourceId, schema, simulate, runMode]);
+      .catch((e: Error) => {
+        setTables([]);
+        setTablesError(e.message);
+      })
+      .finally(() => setTablesLoading(false));
+  }, [sourceId, schema, runMode]);
+
+  useEffect(() => {
+    if (table && tables.length > 0 && !tables.some((t) => t.name === table)) {
+      setTable("");
+    }
+  }, [tables, table]);
 
   useEffect(() => {
     setFilters([]);
@@ -216,12 +262,24 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
     let cancelled = false;
     setColumnsLoading(true);
     setColumnsError(null);
-    const columnsUrl =
-      runMode === "TEST"
-        ? `/api/lab/schemas/${encodeURIComponent(schema)}/tables/${encodeURIComponent(effectiveTable)}/columns`
-        : `/api/connections/${sourceId}/schemas/${schema}/tables/${encodeURIComponent(effectiveTable)}/columns`;
-    apiFetch<{ columns: typeof columns }>(columnsUrl)
-      .then((r) => {
+
+    const loadColumns = async () => {
+      if (runMode === "TEST" && isLabSchema(schema)) {
+        const result = await fetchLabColumns(schema, effectiveTable);
+        if (cancelled) return;
+        setColumns(result.data);
+        if (result.fromFallback && result.error) {
+          setColumnsError(result.error);
+        }
+        setConflictColumns(
+          result.data.filter((c) => c.name.endsWith("_id") || c.name === "id").map((c) => c.name)
+        );
+        setColumnsLoading(false);
+        return;
+      }
+      const columnsUrl = `/api/connections/${sourceId}/schemas/${schema}/tables/${encodeURIComponent(effectiveTable)}/columns`;
+      try {
+        const r = await apiFetch<{ columns: typeof columns }>(columnsUrl);
         if (cancelled) return;
         setColumns(r.columns ?? []);
         setConflictColumns(
@@ -229,15 +287,16 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
             .filter((c) => c.name.endsWith("_id") || c.name === "id")
             .map((c) => c.name)
         );
-      })
-      .catch((e: Error) => {
+      } catch (e) {
         if (cancelled) return;
         setColumns([]);
-        setColumnsError(e.message || "Failed to load columns");
-      })
-      .finally(() => {
+        setColumnsError(e instanceof Error ? e.message : "Failed to load columns");
+      } finally {
         if (!cancelled) setColumnsLoading(false);
-      });
+      }
+    };
+
+    void loadColumns();
     return () => {
       cancelled = true;
     };
@@ -529,7 +588,13 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
             </AlertDescription>
           </Alert>
         )}
-        <SchemaPicker schemas={schemas} value={schema} onChange={setSchema} />
+        <SchemaPicker
+          schemas={schemas}
+          value={schema}
+          onChange={onSchemaChange}
+          loading={runMode === "TEST" && schemasLoading}
+          error={schemasError}
+        />
         <TablePicker
           tables={tables}
           selected={table}
@@ -538,6 +603,9 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           onSelectTable={setTable}
           onTogglePartition={setIsPartition}
           onSelectPartition={setPartitionName}
+          loading={tablesLoading}
+          error={tablesError}
+          schemaSelected={Boolean(schema)}
         />
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => attemptStepChange("1")}>
