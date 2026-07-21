@@ -31,10 +31,12 @@ export function OptionSelect<T extends string>({
   disabled?: boolean;
 }) {
   const selected = options.find((o) => o.value === value);
+  // ponytail: null = empty but still controlled; undefined would flip to uncontrolled (base-ui warning)
+  const selectValue = value === "" ? null : value;
 
   return (
     <Select
-      value={value || undefined}
+      value={selectValue}
       onValueChange={(v) => v && onValueChange(v as T)}
       disabled={disabled}
     >

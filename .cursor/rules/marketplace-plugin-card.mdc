@@ -38,6 +38,6 @@ Map plugin IDs in `lib/plugin-docs.ts` (`pluginDocSlug`). Unknown IDs fall back 
 
 Use **`BuildYourOwnCard`** for the upload-your-own tile — same footer pattern with `DocLink` to `adding-a-connector` and `connector-sdk`.
 
-## Deprecation
+- TOOL cards: show **Install** / **Uninstall** (no Add Connection). Uninstall runs lab DB cleanup for `lab-devtools`.
 
 `ConnectorCard` re-exports `MarketplacePluginCard` for backward compatibility — prefer the marketplace import in new code.

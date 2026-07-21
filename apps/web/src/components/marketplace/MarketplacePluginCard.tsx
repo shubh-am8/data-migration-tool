@@ -72,7 +72,7 @@ export function MarketplacePluginCard({
               Install
             </Button>
           )}
-          {installed && !isTool && onUninstall && (
+          {installed && onUninstall && (
             <Button size="sm" variant="warning" onClick={onUninstall}>
               Uninstall
             </Button>

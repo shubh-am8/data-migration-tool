@@ -1,7 +1,9 @@
 package com.migration.connectors;
 
 import com.migration.auth.UserService;
+import com.migration.marketplace.LabDevtoolsInstaller;
 import com.migration.marketplace.MarketplaceCatalog;
+import com.migration.marketplace.MarketplaceInstallEntity;
 import com.migration.marketplace.MarketplaceInstallRepository;
 import com.migration.marketplace.MarketplaceRemoteInstallService;
 import org.springframework.http.HttpStatus;
@@ -29,6 +31,7 @@ public class MarketplaceController {
     private final MarketplaceCatalog marketplaceCatalog;
     private final MarketplaceRemoteInstallService remoteInstallService;
     private final MarketplaceInstallRepository marketplaceInstallRepository;
+    private final LabDevtoolsInstaller labDevtoolsInstaller;
 
     public MarketplaceController(ConnectorPluginRepository pluginRepository,
                                  ConnectorPluginRegistry pluginRegistry,
@@ -37,7 +40,8 @@ public class MarketplaceController {
                                  UserService userService,
                                  MarketplaceCatalog marketplaceCatalog,
                                  MarketplaceRemoteInstallService remoteInstallService,
-                                 MarketplaceInstallRepository marketplaceInstallRepository) {
+                                 MarketplaceInstallRepository marketplaceInstallRepository,
+                                 LabDevtoolsInstaller labDevtoolsInstaller) {
         this.pluginRepository = pluginRepository;
         this.pluginRegistry = pluginRegistry;
         this.connectionRepository = connectionRepository;
@@ -46,6 +50,7 @@ public class MarketplaceController {
         this.marketplaceCatalog = marketplaceCatalog;
         this.remoteInstallService = remoteInstallService;
         this.marketplaceInstallRepository = marketplaceInstallRepository;
+        this.labDevtoolsInstaller = labDevtoolsInstaller;
     }
 
     /** Connector rows come from the catalog table (via {@code ConnectorPluginRepository}); TOOL
@@ -122,6 +127,14 @@ public class MarketplaceController {
         if (result instanceof MarketplaceRemoteInstallService.InstallResult.Failed failed) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, failed.message());
         }
+        if ("lab-devtools".equals(toolId)) {
+            try {
+                labDevtoolsInstaller.apply(pluginDirectory.toolsDir().resolve(toolId));
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Lab Dev Tools installed but lab DB setup failed: " + e.getMessage());
+            }
+        }
         MarketplaceRemoteInstallService.InstallResult.Ok ok = (MarketplaceRemoteInstallService.InstallResult.Ok) result;
         Map<String, Object> dto = new HashMap<>();
         dto.put("id", ok.id());
@@ -134,6 +147,9 @@ public class MarketplaceController {
     @PostMapping("/{pluginId}/uninstall")
     public Map<String, Object> uninstall(@PathVariable String pluginId, Authentication auth) {
         requireAdmin(auth);
+        if (isToolPlugin(pluginId)) {
+            return uninstallTool(pluginId);
+        }
         ConnectorPluginEntity entity = pluginRepository.findById(pluginId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Plugin not found"));
         long inUse = connectionRepository.findAll().stream()
@@ -150,6 +166,36 @@ public class MarketplaceController {
         }
         entity.setEnabled(false);
         return toDto(pluginRepository.save(entity));
+    }
+
+    private boolean isToolPlugin(String pluginId) {
+        if (marketplaceCatalog.find(pluginId).filter(i -> "TOOL".equals(i.kind())).isPresent()) {
+            return true;
+        }
+        return marketplaceInstallRepository.findById(pluginId)
+            .map(MarketplaceInstallEntity::getKind)
+            .filter("TOOL"::equals)
+            .isPresent();
+    }
+
+    private Map<String, Object> uninstallTool(String toolId) {
+        if (!marketplaceInstallRepository.existsById(toolId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tool not installed: " + toolId);
+        }
+        try {
+            if ("lab-devtools".equals(toolId)) {
+                labDevtoolsInstaller.cleanup();
+            }
+            pluginDirectory.uninstallTool(toolId);
+            marketplaceInstallRepository.deleteById(toolId);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", toolId);
+        dto.put("kind", "TOOL");
+        dto.put("installed", false);
+        return dto;
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

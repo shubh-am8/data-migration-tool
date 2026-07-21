@@ -1,4 +1,9 @@
 import type { SimulationScenario } from "./simulation-options";
+import { LAB_SCHEMAS } from "./simulation-options";
+import type { FilterRow } from "./filter-validation";
+import { validateFilterRows } from "./filter-validation";
+
+export type { FilterRow };
 
 export type JobWizardState = {
   name: string;
@@ -14,6 +19,8 @@ export type JobWizardState = {
   rangeEndMode: string;
   rangeEnd: string;
   rangeStart: string;
+  filters: FilterRow[];
+  columns: Array<{ name: string; dataType: string }>;
 };
 
 export type StepValidation = { ok: true } | { ok: false; message: string };
@@ -24,17 +31,21 @@ export function validateJobWizardStep(step: string, s: JobWizardState): StepVali
       if (!s.name.trim()) return { ok: false, message: "Job name is required" };
       if (!s.sourceId) return { ok: false, message: "Select a source connection" };
       if (!s.destId) return { ok: false, message: "Select a destination connection" };
-      if (s.sourceId === s.destId) return { ok: false, message: "Source and destination must differ" };
       return { ok: true };
     }
     case "2": {
-      if (s.simulate && s.runMode === "TEST") return { ok: true };
       if (!s.schema) return { ok: false, message: "Select a schema" };
       if (!s.table) return { ok: false, message: "Select a table" };
+      if (
+        s.runMode === "TEST" &&
+        !(LAB_SCHEMAS as readonly string[]).includes(s.schema)
+      ) {
+        return { ok: false, message: "TEST jobs must use schema app or test (lab database)" };
+      }
       return { ok: true };
     }
     case "3":
-      return { ok: true };
+      return validateFilterRows(s.filters, s.columns);
     case "4": {
       if (!s.tsColumn.trim()) return { ok: false, message: "Timestamp column is required" };
       if (s.migrationMode !== "HOT_ONLY" && !s.rangeStart) {

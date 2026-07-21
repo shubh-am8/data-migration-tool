@@ -10,10 +10,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SchemaPicker } from "./SchemaPicker";
 import { TablePicker } from "./TablePicker";
-import { FilterBuilder, FilterRow } from "./FilterBuilder";
+import { FilterBuilder } from "./FilterBuilder";
 import { HotColdConfig } from "./HotColdConfig";
 import { ConflictConfig } from "./ConflictConfig";
 import { AlertConfig } from "./AlertConfig";
+import { normalizeFilterRow } from "@/lib/filter-validation";
 import { apiFetch } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
 import { LiveLogTerminal } from "@/components/shared/LiveLogTerminal";
@@ -21,12 +22,14 @@ import { inferLevelFromText, type LogLine } from "@/lib/log-line";
 import {
   canOpenJobWizardStep,
   validateJobWizardStep,
+  type FilterRow,
   type JobWizardState,
 } from "@/lib/job-wizard-validation";
 import {
   LAB_SCHEMAS,
   LAB_SIMULATION_TABLES,
   SIMULATION_SCENARIO_OPTIONS,
+  buildSimulationConfigJson,
   simulationPreset,
   type SimulationScenario,
 } from "@/lib/simulation-options";
@@ -50,12 +53,15 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [sourceId, setSourceId] = useState("");
   const [destId, setDestId] = useState("");
   const [apiSchemas, setApiSchemas] = useState<string[]>([]);
+  const [labSchemas, setLabSchemas] = useState<string[]>([]);
   const [schema, setSchema] = useState("");
   const [tables, setTables] = useState<TableEntry[]>([]);
   const [table, setTable] = useState("");
   const [isPartition, setIsPartition] = useState(false);
   const [partitionName, setPartitionName] = useState("");
   const [columns, setColumns] = useState<Array<{ name: string; dataType: string }>>([]);
+  const [columnsLoading, setColumnsLoading] = useState(false);
+  const [columnsError, setColumnsError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterRow[]>([]);
   const [migrationMode, setMigrationMode] = useState("HOT_THEN_COLD");
   const [hotDays, setHotDays] = useState(7);
@@ -75,6 +81,8 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [testPassed, setTestPassed] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  const effectiveTable = isPartition && partitionName ? partitionName : table;
+
   const wizardState: JobWizardState = useMemo(
     () => ({
       name,
@@ -90,6 +98,8 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       rangeEndMode,
       rangeEnd,
       rangeStart,
+      filters,
+      columns,
     }),
     [
       name,
@@ -105,16 +115,17 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       rangeEndMode,
       rangeEnd,
       rangeStart,
+      filters,
+      columns,
     ]
   );
 
   const schemas = useMemo(() => {
-    if (simulate && runMode === "TEST") {
-      const merged = new Set([...apiSchemas, ...LAB_SCHEMAS]);
-      return [...merged];
+    if (runMode === "TEST") {
+      return labSchemas.length > 0 ? labSchemas : [...LAB_SCHEMAS];
     }
     return apiSchemas;
-  }, [apiSchemas, simulate, runMode]);
+  }, [apiSchemas, labSchemas, runMode]);
 
   const connectionOptions = useMemo(
     () => connections.map((c) => ({ value: c.id, label: c.name })),
@@ -138,6 +149,24 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   }, []);
 
   useEffect(() => {
+    if (runMode !== "TEST") {
+      setLabSchemas([]);
+      return;
+    }
+    apiFetch<{ schemas: string[] }>("/api/lab/schemas")
+      .then((r) => setLabSchemas(r.schemas ?? []))
+      .catch(() => setLabSchemas([...LAB_SCHEMAS]));
+  }, [runMode]);
+
+  useEffect(() => {
+    if (runMode === "TEST" && schema && !(LAB_SCHEMAS as readonly string[]).includes(schema)) {
+      setSchema("");
+      setTable("");
+    }
+  }, [runMode, schema]);
+
+  useEffect(() => {
+    if (runMode === "TEST") return;
     if (!sourceId) {
       setApiSchemas([]);
       return;
@@ -145,33 +174,74 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
     apiFetch<{ schemas: string[] }>(`/api/connections/${sourceId}/schemas`)
       .then((r) => setApiSchemas(r.schemas))
       .catch(() => setApiSchemas([]));
-  }, [sourceId]);
+  }, [sourceId, runMode]);
 
   useEffect(() => {
-    if (simulate && runMode === "TEST") {
-      applySimulationPreset(simulationScenario);
+    if (!schema) {
+      setTables([]);
       return;
     }
-    if (!sourceId || !schema) return;
+    if (runMode === "TEST") {
+      apiFetch<{ tables: TableEntry[] }>(`/api/lab/schemas/${encodeURIComponent(schema)}/tables`)
+        .then((r) => setTables(r.tables ?? []))
+        .catch(() => setTables(simulate ? [...LAB_SIMULATION_TABLES] : []));
+      return;
+    }
+    if (!sourceId) {
+      setTables([]);
+      return;
+    }
     apiFetch<{ tables: TableEntry[] }>(`/api/connections/${sourceId}/schemas/${schema}/tables`)
-      .then((r) => setTables(r.tables))
+      .then((r) => setTables(r.tables ?? []))
       .catch(() => setTables([]));
-  }, [sourceId, schema, simulate, runMode, simulationScenario, applySimulationPreset]);
+  }, [sourceId, schema, simulate, runMode]);
 
   useEffect(() => {
-    if (simulate && runMode === "TEST") return;
-    if (!sourceId || !schema || !table) return;
-    apiFetch<{ columns: typeof columns }>(
-      `/api/connections/${sourceId}/schemas/${schema}/tables/${table}/columns`
-    )
+    setFilters([]);
+    setColumns([]);
+    setColumnsError(null);
+  }, [sourceId, schema, table, isPartition, partitionName, runMode]);
+
+  useEffect(() => {
+    if (!schema || !effectiveTable) {
+      setColumns([]);
+      setColumnsLoading(false);
+      return;
+    }
+    if (runMode !== "TEST" && !sourceId) {
+      setColumns([]);
+      setColumnsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setColumnsLoading(true);
+    setColumnsError(null);
+    const columnsUrl =
+      runMode === "TEST"
+        ? `/api/lab/schemas/${encodeURIComponent(schema)}/tables/${encodeURIComponent(effectiveTable)}/columns`
+        : `/api/connections/${sourceId}/schemas/${schema}/tables/${encodeURIComponent(effectiveTable)}/columns`;
+    apiFetch<{ columns: typeof columns }>(columnsUrl)
       .then((r) => {
-        setColumns(r.columns);
+        if (cancelled) return;
+        setColumns(r.columns ?? []);
         setConflictColumns(
-          r.columns.filter((c) => c.name.endsWith("_id") || c.name === "id").map((c) => c.name)
+          (r.columns ?? [])
+            .filter((c) => c.name.endsWith("_id") || c.name === "id")
+            .map((c) => c.name)
         );
       })
-      .catch(console.error);
-  }, [sourceId, schema, table, simulate, runMode]);
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setColumns([]);
+        setColumnsError(e.message || "Failed to load columns");
+      })
+      .finally(() => {
+        if (!cancelled) setColumnsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceId, schema, effectiveTable, runMode]);
 
   function attemptStepChange(next: string) {
     const gate = canOpenJobWizardStep(next, wizardState);
@@ -202,7 +272,7 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
 
   function simulationConfigJson() {
     if (!simulate || runMode !== "TEST") return undefined;
-    return simulationPreset(simulationScenario).configJson;
+    return buildSimulationConfigJson(simulationScenario, schema, table);
   }
 
   async function saveJob() {
@@ -226,7 +296,7 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       isPartition,
       partitionName,
       conflictColumns,
-      filters,
+      filters: filters.map((f) => normalizeFilterRow(f, columns)),
       rangeStart: toInstant(rangeStart),
       rangeEndMode,
       rangeEnd: rangeEndMode === "FIXED" ? toInstant(rangeEnd) : null,
@@ -347,6 +417,8 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
             <FieldLabel>Run Mode</FieldLabel>
             <ToggleGroup
               variant="outline"
+              spacing={0}
+              className="w-full max-w-md rounded-lg border border-input bg-muted/40 p-0.5"
               value={[runMode]}
               onValueChange={(value) => {
                 const next = value[0];
@@ -356,8 +428,18 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
                 }
               }}
             >
-              <ToggleGroupItem value="TEST">Test</ToggleGroupItem>
-              <ToggleGroupItem value="PRODUCTION">Production</ToggleGroupItem>
+              <ToggleGroupItem
+                value="TEST"
+                className="min-w-0 flex-1 border-transparent aria-pressed:border-emerald-600 aria-pressed:bg-emerald-600 aria-pressed:font-semibold aria-pressed:text-white aria-pressed:shadow-sm data-pressed:border-emerald-600 data-pressed:bg-emerald-600 data-pressed:font-semibold data-pressed:text-white data-pressed:shadow-sm hover:aria-pressed:bg-emerald-600/90 hover:data-pressed:bg-emerald-600/90"
+              >
+                Test
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="PRODUCTION"
+                className="min-w-0 flex-1 border-transparent aria-pressed:border-red-600 aria-pressed:bg-red-600 aria-pressed:font-semibold aria-pressed:text-white aria-pressed:shadow-sm data-pressed:border-red-600 data-pressed:bg-red-600 data-pressed:font-semibold data-pressed:text-white data-pressed:shadow-sm hover:aria-pressed:bg-red-600/90 hover:data-pressed:bg-red-600/90"
+              >
+                Production
+              </ToggleGroupItem>
             </ToggleGroup>
           </Field>
           {runMode === "PRODUCTION" && (
@@ -427,28 +509,36 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       </TabsContent>
 
       <TabsContent value="2" className="flex flex-col gap-4 pt-4">
-        {simulate && runMode === "TEST" ? (
+        {runMode === "TEST" && (
           <Alert>
-            <AlertTitle>Simulation job</AlertTitle>
+            <AlertTitle>Lab database schemas</AlertTitle>
             <AlertDescription>
-              Schema <strong>{schema}</strong> and table <strong>{table}</strong> are set from your seeding pattern.
-              Install Lab Dev Tools from the Marketplace if tables are missing.
+              TEST jobs use the lab playground (<strong>app</strong> and <strong>test</strong> on{" "}
+              <code className="text-xs">migration_lab</code>). Install Lab Dev Tools from the marketplace if these
+              schemas are empty. Use sandbox connections pointing at the lab database for migrations.
             </AlertDescription>
           </Alert>
-        ) : (
-          <>
-            <SchemaPicker schemas={schemas} value={schema} onChange={setSchema} />
-            <TablePicker
-              tables={tables}
-              selected={table}
-              usePartition={isPartition}
-              partitionName={partitionName}
-              onSelectTable={setTable}
-              onTogglePartition={setIsPartition}
-              onSelectPartition={setPartitionName}
-            />
-          </>
         )}
+        {simulate && runMode === "TEST" && (
+          <Alert>
+            <AlertTitle>Sample data seeding enabled</AlertTitle>
+            <AlertDescription>
+              Pick the same schema and table you will migrate. Suggested lab tables:{" "}
+              <strong>orders_cold</strong>, <strong>orders_hot_cold</strong> in schemas{" "}
+              <strong>app</strong> or <strong>test</strong>.
+            </AlertDescription>
+          </Alert>
+        )}
+        <SchemaPicker schemas={schemas} value={schema} onChange={setSchema} />
+        <TablePicker
+          tables={tables}
+          selected={table}
+          usePartition={isPartition}
+          partitionName={partitionName}
+          onSelectTable={setTable}
+          onTogglePartition={setIsPartition}
+          onSelectPartition={setPartitionName}
+        />
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => attemptStepChange("1")}>
             Back
@@ -458,7 +548,18 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
       </TabsContent>
 
       <TabsContent value="3" className="flex flex-col gap-4 pt-4">
-        <FilterBuilder columns={columns} filters={filters} onChange={setFilters} />
+        {columnsError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Could not load columns</AlertTitle>
+            <AlertDescription>{columnsError}</AlertDescription>
+          </Alert>
+        ) : null}
+        <FilterBuilder
+          columns={columns}
+          filters={filters}
+          onChange={setFilters}
+          loading={columnsLoading}
+        />
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => attemptStepChange("2")}>
             Back
@@ -472,6 +573,12 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           migrationMode={migrationMode}
           hotDays={hotDays}
           tsColumn={tsColumn}
+          timestampColumns={columns
+            .filter((c) => {
+              const t = c.dataType.toLowerCase();
+              return t.includes("timestamp") || t.includes("date") || t.includes("time");
+            })
+            .map((c) => c.name)}
           rangeStart={rangeStart}
           rangeEndMode={rangeEndMode}
           rangeEnd={rangeEnd}

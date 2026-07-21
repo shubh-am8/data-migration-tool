@@ -9,12 +9,13 @@ alwaysApply: false
 ## Step gating
 
 - Validate with `validateJobWizardStep` / `canOpenJobWizardStep` from `@/lib/job-wizard-validation`.
-- Block tab jumps and **Next** until the current step passes; surface errors via `Alert` + `notify.warning`.
+- Step 2 always shows `SchemaPicker` + `TablePicker` for TEST and PRODUCTION (including seed-sample-data jobs).
 - Every step needs **Back** except step 1.
 
 ## Dropdowns
 
 - Use **`OptionSelect`** (`@/components/ui/option-select`) whenever `value` is an ID or enum — never raw `SelectValue` for UUID/enum triggers (base-ui shows the value, not the label).
+- Empty selection: pass `null` to Select, not `undefined` (keeps controlled mode).
 - Human labels live in option maps (`SIMULATION_SCENARIO_OPTIONS`, `MIGRATION_MODE_OPTIONS`, `FILTER_OPERATOR_LABELS`).
 
 ## Simulation (TEST + seed sample data)
@@ -22,6 +23,7 @@ alwaysApply: false
 - Scenarios: Cold data only, Hot data only, Hot then cold, Cold then hot — via `simulation-options.ts`.
 - Merge `LAB_SCHEMAS` (`app`, `test`) and preset tables when simulating; call `applySimulationPreset` on scenario change.
 - `configJson.kind` must be `SIMULATE`.
+- Same connection for source and dest is valid (copy between tables in one DB).
 
 ## Logs
 

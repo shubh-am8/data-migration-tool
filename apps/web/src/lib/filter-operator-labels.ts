@@ -1,4 +1,6 @@
-export const FILTER_OPERATOR_LABELS: Record<string, string> = {
+import type { FilterOperator } from "./column-data-type";
+
+export const FILTER_OPERATOR_LABELS: Record<FilterOperator, string> = {
   EQ: "Equals",
   NE: "Not equals",
   LT: "Less than",
@@ -12,6 +14,6 @@ export const FILTER_OPERATOR_LABELS: Record<string, string> = {
   ILIKE: "Like (case insensitive)",
 };
 
-export function filterOperatorOptions(types: string[]) {
-  return types.map((op) => ({ value: op, label: FILTER_OPERATOR_LABELS[op] ?? op }));
+export function filterOperatorOptions(ops: FilterOperator[]) {
+  return ops.map((op) => ({ value: op, label: FILTER_OPERATOR_LABELS[op] ?? op }));
 }

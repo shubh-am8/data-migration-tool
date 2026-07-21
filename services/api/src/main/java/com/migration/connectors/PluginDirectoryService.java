@@ -67,6 +67,31 @@ public class PluginDirectoryService {
         reload();
     }
 
+    /** Removes extracted TOOL marketplace files under {@code tools/{toolId}/}. */
+    public synchronized void uninstallTool(String toolId) throws IOException {
+        Path dir = tools.resolve(toolId).normalize();
+        if (!dir.startsWith(tools)) {
+            throw new IllegalArgumentException("Invalid tool id: " + toolId);
+        }
+        if (Files.isDirectory(dir)) {
+            deleteRecursive(dir);
+        }
+    }
+
+    private static void deleteRecursive(Path dir) throws IOException {
+        try (var walk = Files.walk(dir)) {
+            walk.sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (IOException e) {
+                    throw new java.io.UncheckedIOException(e);
+                }
+            });
+        } catch (java.io.UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+
     public synchronized String upload(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Empty upload");

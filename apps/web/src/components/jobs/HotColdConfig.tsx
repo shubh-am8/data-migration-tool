@@ -20,6 +20,7 @@ interface HotColdConfigProps {
   migrationMode: string;
   hotDays: number;
   tsColumn: string;
+  timestampColumns?: string[];
   rangeStart: string;
   rangeEndMode: string;
   rangeEnd: string;
@@ -32,6 +33,7 @@ export function HotColdConfig({
   migrationMode,
   hotDays,
   tsColumn,
+  timestampColumns = [],
   rangeStart,
   rangeEndMode,
   rangeEnd,
@@ -92,7 +94,16 @@ export function HotColdConfig({
       )}
       <Field>
         <FieldLabel>Timestamp column *</FieldLabel>
-        <Input required value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
+        {timestampColumns.length > 0 ? (
+          <OptionSelect
+            value={tsColumn}
+            onValueChange={(v) => onChange({ tsColumn: v })}
+            options={timestampColumns.map((c) => ({ value: c, label: c }))}
+            placeholder="Select timestamp column"
+          />
+        ) : (
+          <Input required value={tsColumn} onChange={(e) => onChange({ tsColumn: e.target.value })} />
+        )}
       </Field>
       <Field>
         <FieldLabel>Min chunk duration (hours)</FieldLabel>

@@ -30,6 +30,11 @@ export function simulationPreset(scenario: SimulationScenario) {
   };
 }
 
-export function simulationScenarioLabel(scenario: string): string {
-  return SIMULATION_SCENARIO_OPTIONS.find((o) => o.value === scenario)?.label ?? scenario;
+export function buildSimulationConfigJson(
+  scenario: SimulationScenario,
+  schema: string,
+  table: string
+) {
+  const preset = simulationPreset(scenario);
+  return { ...preset.configJson, schema, table };
 }
