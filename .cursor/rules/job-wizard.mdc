@@ -1,0 +1,28 @@
+---
+description: Job wizard step validation, OptionSelect, lab simulation presets
+globs: apps/web/src/components/jobs/**,apps/web/src/app/jobs/**
+alwaysApply: false
+---
+
+# Job wizard
+
+## Step gating
+
+- Validate with `validateJobWizardStep` / `canOpenJobWizardStep` from `@/lib/job-wizard-validation`.
+- Block tab jumps and **Next** until the current step passes; surface errors via `Alert` + `notify.warning`.
+- Every step needs **Back** except step 1.
+
+## Dropdowns
+
+- Use **`OptionSelect`** (`@/components/ui/option-select`) whenever `value` is an ID or enum — never raw `SelectValue` for UUID/enum triggers (base-ui shows the value, not the label).
+- Human labels live in option maps (`SIMULATION_SCENARIO_OPTIONS`, `MIGRATION_MODE_OPTIONS`, `FILTER_OPERATOR_LABELS`).
+
+## Simulation (TEST + seed sample data)
+
+- Scenarios: Cold data only, Hot data only, Hot then cold, Cold then hot — via `simulation-options.ts`.
+- Merge `LAB_SCHEMAS` (`app`, `test`) and preset tables when simulating; call `applySimulationPreset` on scenario change.
+- `configJson.kind` must be `SIMULATE`.
+
+## Logs
+
+- Job test SSE: `LiveLogTerminal` on step 5; gate **Add Job** on `testPassed` for new jobs.

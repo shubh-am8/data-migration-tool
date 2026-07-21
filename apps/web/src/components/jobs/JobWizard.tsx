@@ -1,16 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/option-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -24,6 +18,18 @@ import { apiFetch } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
 import { LiveLogTerminal } from "@/components/shared/LiveLogTerminal";
 import { inferLevelFromText, type LogLine } from "@/lib/log-line";
+import {
+  canOpenJobWizardStep,
+  validateJobWizardStep,
+  type JobWizardState,
+} from "@/lib/job-wizard-validation";
+import {
+  LAB_SCHEMAS,
+  LAB_SIMULATION_TABLES,
+  SIMULATION_SCENARIO_OPTIONS,
+  simulationPreset,
+  type SimulationScenario,
+} from "@/lib/simulation-options";
 import type { PageResponse } from "@/components/shared/PaginationBar";
 
 interface JobWizardProps {
@@ -31,18 +37,21 @@ interface JobWizardProps {
   onComplete: () => void;
 }
 
+type TableEntry = { name: string; kind: string; partitioned: boolean; partitions: string[] };
+
 export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [step, setStep] = useState("1");
+  const [stepError, setStepError] = useState<string | null>(null);
   const [connections, setConnections] = useState<Array<{ id: string; name: string }>>([]);
   const [name, setName] = useState("");
   const [runMode, setRunMode] = useState<"TEST" | "PRODUCTION">("TEST");
   const [simulate, setSimulate] = useState(false);
-  const [simulationScenario, setSimulationScenario] = useState<"COLD_ONLY" | "HOT_THEN_COLD">("COLD_ONLY");
+  const [simulationScenario, setSimulationScenario] = useState<SimulationScenario>("COLD_ONLY");
   const [sourceId, setSourceId] = useState("");
   const [destId, setDestId] = useState("");
-  const [schemas, setSchemas] = useState<string[]>([]);
+  const [apiSchemas, setApiSchemas] = useState<string[]>([]);
   const [schema, setSchema] = useState("");
-  const [tables, setTables] = useState<Array<{ name: string; kind: string; partitioned: boolean; partitions: string[] }>>([]);
+  const [tables, setTables] = useState<TableEntry[]>([]);
   const [table, setTable] = useState("");
   const [isPartition, setIsPartition] = useState(false);
   const [partitionName, setPartitionName] = useState("");
@@ -66,32 +75,125 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   const [testPassed, setTestPassed] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  const wizardState: JobWizardState = useMemo(
+    () => ({
+      name,
+      runMode,
+      simulate,
+      simulationScenario,
+      sourceId,
+      destId,
+      schema,
+      table,
+      tsColumn,
+      migrationMode,
+      rangeEndMode,
+      rangeEnd,
+      rangeStart,
+    }),
+    [
+      name,
+      runMode,
+      simulate,
+      simulationScenario,
+      sourceId,
+      destId,
+      schema,
+      table,
+      tsColumn,
+      migrationMode,
+      rangeEndMode,
+      rangeEnd,
+      rangeStart,
+    ]
+  );
+
+  const schemas = useMemo(() => {
+    if (simulate && runMode === "TEST") {
+      const merged = new Set([...apiSchemas, ...LAB_SCHEMAS]);
+      return [...merged];
+    }
+    return apiSchemas;
+  }, [apiSchemas, simulate, runMode]);
+
+  const connectionOptions = useMemo(
+    () => connections.map((c) => ({ value: c.id, label: c.name })),
+    [connections]
+  );
+
+  const applySimulationPreset = useCallback((scenario: SimulationScenario) => {
+    const preset = simulationPreset(scenario);
+    setSchema(preset.schema);
+    setTable(preset.table);
+    setTables(LAB_SIMULATION_TABLES);
+    setTsColumn(preset.table === "orders_cold" ? "created_at" : "updated_at");
+  }, []);
+
   useEffect(() => {
-    apiFetch<PageResponse<{ id: string; name: string }> | Array<{ id: string; name: string }>>("/api/connections?page=0&size=100")
+    apiFetch<PageResponse<{ id: string; name: string }> | Array<{ id: string; name: string }>>(
+      "/api/connections?page=0&size=100"
+    )
       .then((r) => setConnections(Array.isArray(r) ? r : r.content ?? []))
       .catch((e: Error) => notify.error("Failed to load connections", e.message));
   }, []);
 
   useEffect(() => {
-    if (!sourceId) return;
+    if (!sourceId) {
+      setApiSchemas([]);
+      return;
+    }
     apiFetch<{ schemas: string[] }>(`/api/connections/${sourceId}/schemas`)
-      .then((r) => setSchemas(r.schemas)).catch(console.error);
+      .then((r) => setApiSchemas(r.schemas))
+      .catch(() => setApiSchemas([]));
   }, [sourceId]);
 
   useEffect(() => {
+    if (simulate && runMode === "TEST") {
+      applySimulationPreset(simulationScenario);
+      return;
+    }
     if (!sourceId || !schema) return;
-    apiFetch<{ tables: typeof tables }>(`/api/connections/${sourceId}/schemas/${schema}/tables`)
-      .then((r) => setTables(r.tables)).catch(console.error);
-  }, [sourceId, schema]);
+    apiFetch<{ tables: TableEntry[] }>(`/api/connections/${sourceId}/schemas/${schema}/tables`)
+      .then((r) => setTables(r.tables))
+      .catch(() => setTables([]));
+  }, [sourceId, schema, simulate, runMode, simulationScenario, applySimulationPreset]);
 
   useEffect(() => {
+    if (simulate && runMode === "TEST") return;
     if (!sourceId || !schema || !table) return;
-    apiFetch<{ columns: typeof columns }>(`/api/connections/${sourceId}/schemas/${schema}/tables/${table}/columns`)
+    apiFetch<{ columns: typeof columns }>(
+      `/api/connections/${sourceId}/schemas/${schema}/tables/${table}/columns`
+    )
       .then((r) => {
         setColumns(r.columns);
-        setConflictColumns(r.columns.filter((c) => c.name.endsWith("_id") || c.name === "id").map((c) => c.name));
-      }).catch(console.error);
-  }, [sourceId, schema, table]);
+        setConflictColumns(
+          r.columns.filter((c) => c.name.endsWith("_id") || c.name === "id").map((c) => c.name)
+        );
+      })
+      .catch(console.error);
+  }, [sourceId, schema, table, simulate, runMode]);
+
+  function attemptStepChange(next: string) {
+    const gate = canOpenJobWizardStep(next, wizardState);
+    if (!gate.ok) {
+      setStepError(gate.message);
+      notify.warning("Complete earlier steps first", gate.message);
+      return;
+    }
+    setStepError(null);
+    setStep(next);
+  }
+
+  function goNext() {
+    const gate = validateJobWizardStep(step, wizardState);
+    if (!gate.ok) {
+      setStepError(gate.message);
+      notify.warning("Complete this step first", gate.message);
+      return;
+    }
+    setStepError(null);
+    setStep(String(Number(step) + 1));
+  }
 
   function toInstant(value: string): string | null {
     if (!value) return null;
@@ -100,23 +202,38 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
 
   function simulationConfigJson() {
     if (!simulate || runMode !== "TEST") return undefined;
-    return simulationScenario === "HOT_THEN_COLD"
-      ? { kind: "SIMULATE", scenario: "HOT_THEN_COLD", schema: "app", table: "orders_hot_cold", rows: 100, updateRatio: 0.2 }
-      : { kind: "SIMULATE", scenario: "COLD_ONLY", schema: "app", table: "orders_cold", rows: 100, updateRatio: 0 };
+    return simulationPreset(simulationScenario).configJson;
   }
 
   async function saveJob() {
+    const gate = validateJobWizardStep("4", wizardState);
+    if (!gate.ok) {
+      notify.warning("Complete required fields", gate.message);
+      return;
+    }
     const configJson = simulationConfigJson();
     const body = {
-      name, runMode, sourceConnectionId: sourceId, destConnectionId: destId,
-      migrationMode, threadCount, hotDays, tsColumn, schemaName: schema,
-      sourceTable: table, isPartition, partitionName,
-      conflictColumns, filters,
+      name,
+      runMode,
+      sourceConnectionId: sourceId,
+      destConnectionId: destId,
+      migrationMode,
+      threadCount,
+      hotDays,
+      tsColumn,
+      schemaName: schema,
+      sourceTable: table,
+      isPartition,
+      partitionName,
+      conflictColumns,
+      filters,
       rangeStart: toInstant(rangeStart),
       rangeEndMode,
       rangeEnd: rangeEndMode === "FIXED" ? toInstant(rangeEnd) : null,
-      minChunkDurationHours, maxChunkDurationHours,
-      lifecycleAlertsEnabled, progressIntervalMin: progressIntervalMin || null,
+      minChunkDurationHours,
+      maxChunkDurationHours,
+      lifecycleAlertsEnabled,
+      progressIntervalMin: progressIntervalMin || null,
       gspaceWebhookOverride: webhookOverride || null,
       ...(configJson ? { configJson } : {}),
     };
@@ -196,13 +313,16 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
   }
 
   async function runPreflight(id: string) {
-    const result = await apiFetch<{ recommendations: Array<{ reason: string }> }>(`/api/jobs/${id}/preflight`, { method: "POST" });
+    const result = await apiFetch<{ recommendations: Array<{ reason: string }> }>(
+      `/api/jobs/${id}/preflight`,
+      { method: "POST" }
+    );
     setPreflight(result);
   }
 
   return (
-    <Tabs value={step} onValueChange={setStep}>
-      <TabsList>
+    <Tabs value={step} onValueChange={attemptStepChange}>
+      <TabsList className="flex h-auto flex-wrap">
         <TabsTrigger value="1">Source & Dest</TabsTrigger>
         <TabsTrigger value="2">Schema & Table</TabsTrigger>
         <TabsTrigger value="3">Filters</TabsTrigger>
@@ -210,9 +330,19 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
         <TabsTrigger value="5">Alerts & Preflight</TabsTrigger>
       </TabsList>
 
+      {stepError ? (
+        <Alert variant="destructive" className="mt-4">
+          <AlertTitle>Step incomplete</AlertTitle>
+          <AlertDescription>{stepError}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <TabsContent value="1" className="flex flex-col gap-4 pt-4">
         <FieldGroup>
-          <Field><FieldLabel>Job Name</FieldLabel><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field>
+            <FieldLabel>Job Name</FieldLabel>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
           <Field>
             <FieldLabel>Run Mode</FieldLabel>
             <ToggleGroup
@@ -241,56 +371,112 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
           {runMode === "TEST" && (
             <Field>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={simulate} onChange={(e) => setSimulate(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={simulate}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setSimulate(on);
+                    if (on) applySimulationPreset(simulationScenario);
+                  }}
+                />
                 Seed sample data job
               </label>
               {simulate && (
-                <Select value={simulationScenario} onValueChange={(v) => (v === "COLD_ONLY" || v === "HOT_THEN_COLD") && setSimulationScenario(v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="COLD_ONLY">Cold only (orders_cold)</SelectItem>
-                    <SelectItem value="HOT_THEN_COLD">Hot then cold (orders_hot_cold)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <>
+                  <OptionSelect
+                    value={simulationScenario}
+                    onValueChange={(v) => {
+                      setSimulationScenario(v);
+                      applySimulationPreset(v);
+                    }}
+                    options={SIMULATION_SCENARIO_OPTIONS}
+                    placeholder="Select seeding pattern"
+                  />
+                  <FieldDescription>
+                    Uses lab schemas ({LAB_SCHEMAS.join(", ")}) and sample tables from Lab Dev Tools.
+                  </FieldDescription>
+                </>
               )}
             </Field>
           )}
           <Field>
             <FieldLabel>Source</FieldLabel>
-            <Select value={sourceId} onValueChange={(v) => v && setSourceId(v)}>
-              <SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger>
-              <SelectContent>{connections.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <OptionSelect
+              value={sourceId}
+              onValueChange={setSourceId}
+              options={connectionOptions}
+              placeholder="Select source"
+            />
           </Field>
           <Field>
             <FieldLabel>Destination</FieldLabel>
-            <Select value={destId} onValueChange={(v) => v && setDestId(v)}>
-              <SelectTrigger><SelectValue placeholder="Select destination" /></SelectTrigger>
-              <SelectContent>{connections.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <OptionSelect
+              value={destId}
+              onValueChange={setDestId}
+              options={connectionOptions}
+              placeholder="Select destination"
+            />
           </Field>
-          <Field><FieldLabel>Threads</FieldLabel><Input type="number" value={threadCount} onChange={(e) => setThreadCount(Number(e.target.value))} /></Field>
+          <Field>
+            <FieldLabel>Threads</FieldLabel>
+            <Input type="number" value={threadCount} onChange={(e) => setThreadCount(Number(e.target.value))} />
+          </Field>
         </FieldGroup>
-        <Button onClick={() => setStep("2")}>Next</Button>
+        <Button onClick={goNext}>Next</Button>
       </TabsContent>
 
       <TabsContent value="2" className="flex flex-col gap-4 pt-4">
-        <SchemaPicker schemas={schemas} value={schema} onChange={setSchema} />
-        <TablePicker tables={tables} selected={table} usePartition={isPartition} partitionName={partitionName}
-          onSelectTable={setTable} onTogglePartition={setIsPartition} onSelectPartition={setPartitionName} />
-        <Button onClick={() => setStep("3")}>Next</Button>
+        {simulate && runMode === "TEST" ? (
+          <Alert>
+            <AlertTitle>Simulation job</AlertTitle>
+            <AlertDescription>
+              Schema <strong>{schema}</strong> and table <strong>{table}</strong> are set from your seeding pattern.
+              Install Lab Dev Tools from the Marketplace if tables are missing.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <SchemaPicker schemas={schemas} value={schema} onChange={setSchema} />
+            <TablePicker
+              tables={tables}
+              selected={table}
+              usePartition={isPartition}
+              partitionName={partitionName}
+              onSelectTable={setTable}
+              onTogglePartition={setIsPartition}
+              onSelectPartition={setPartitionName}
+            />
+          </>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => attemptStepChange("1")}>
+            Back
+          </Button>
+          <Button onClick={goNext}>Next</Button>
+        </div>
       </TabsContent>
 
-      <TabsContent value="3" className="pt-4">
+      <TabsContent value="3" className="flex flex-col gap-4 pt-4">
         <FilterBuilder columns={columns} filters={filters} onChange={setFilters} />
-        <Button className="mt-4" onClick={() => setStep("4")}>Next</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => attemptStepChange("2")}>
+            Back
+          </Button>
+          <Button onClick={goNext}>Next</Button>
+        </div>
       </TabsContent>
 
       <TabsContent value="4" className="flex flex-col gap-4 pt-4">
         <HotColdConfig
-          migrationMode={migrationMode} hotDays={hotDays} tsColumn={tsColumn}
-          rangeStart={rangeStart} rangeEndMode={rangeEndMode} rangeEnd={rangeEnd}
-          minChunkDurationHours={minChunkDurationHours} maxChunkDurationHours={maxChunkDurationHours}
+          migrationMode={migrationMode}
+          hotDays={hotDays}
+          tsColumn={tsColumn}
+          rangeStart={rangeStart}
+          rangeEndMode={rangeEndMode}
+          rangeEnd={rangeEnd}
+          minChunkDurationHours={minChunkDurationHours}
+          maxChunkDurationHours={maxChunkDurationHours}
           onChange={(p) => {
             if (p.migrationMode !== undefined) setMigrationMode(p.migrationMode);
             if (p.hotDays !== undefined) setHotDays(p.hotDays);
@@ -302,20 +488,35 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
             if (p.maxChunkDurationHours !== undefined) setMaxChunkDurationHours(p.maxChunkDurationHours);
           }}
         />
-        <ConflictConfig columns={columns.map((c) => c.name)} selected={conflictColumns} onChange={setConflictColumns} />
-        <Button onClick={() => setStep("5")}>Next</Button>
+        <ConflictConfig
+          columns={columns.map((c) => c.name)}
+          selected={conflictColumns}
+          onChange={setConflictColumns}
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => attemptStepChange("3")}>
+            Back
+          </Button>
+          <Button onClick={goNext}>Next</Button>
+        </div>
       </TabsContent>
 
       <TabsContent value="5" className="flex flex-col gap-4 pt-4">
-        <AlertConfig lifecycleEnabled={lifecycleAlertsEnabled} progressIntervalMin={progressIntervalMin}
+        <AlertConfig
+          lifecycleEnabled={lifecycleAlertsEnabled}
+          progressIntervalMin={progressIntervalMin}
           webhookOverride={webhookOverride}
           onChange={(p) => {
             if (p.lifecycleEnabled !== undefined) setLifecycleAlertsEnabled(p.lifecycleEnabled);
             if (p.progressIntervalMin !== undefined) setProgressIntervalMin(p.progressIntervalMin);
             if (p.webhookOverride !== undefined) setWebhookOverride(p.webhookOverride);
-          }} />
+          }}
+        />
         {preflight?.recommendations?.map((r, i) => (
-          <Alert key={i}><AlertTitle>Index recommendation</AlertTitle><AlertDescription>{r.reason}</AlertDescription></Alert>
+          <Alert key={i}>
+            <AlertTitle>Index recommendation</AlertTitle>
+            <AlertDescription>{r.reason}</AlertDescription>
+          </Alert>
         ))}
         <div className="flex flex-col gap-2">
           <Button variant="info" disabled={testing} onClick={runTestJob}>
@@ -334,11 +535,18 @@ export function JobWizard({ jobId, onComplete }: JobWizardProps) {
             </Alert>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => attemptStepChange("4")}>
+            Back
+          </Button>
           <Button variant="success" onClick={saveJob} disabled={!jobId && !testPassed}>
             {jobId ? "Save Job" : "Add Job"}
           </Button>
-          {jobId && <Button variant="outline" onClick={() => runPreflight(jobId)}>Run Preflight</Button>}
+          {jobId && (
+            <Button variant="outline" onClick={() => runPreflight(jobId)}>
+              Run Preflight
+            </Button>
+          )}
         </div>
       </TabsContent>
     </Tabs>

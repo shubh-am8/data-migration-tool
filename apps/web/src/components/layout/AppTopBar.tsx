@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/nav-sections";
+import { isAutoRefreshRoute } from "@/lib/auto-refresh-routes";
 import { usePageChrome } from "@/components/layout/PageChromeContext";
 import { LocalClock } from "@/components/dashboard/LocalClock";
 import { AutoRefreshControl, useAutoRefresh } from "@/components/shared/AutoRefreshControl";
@@ -15,11 +16,12 @@ function fallbackTitle(pathname: string): string {
   return match?.label ?? "Migration Tool";
 }
 
-/** Universal chrome above every AppShell page: title (from PageChromeContext, else nav fallback), Calcutta clock, auto-refresh. */
+/** Universal chrome: title, clock, auto-refresh (dashboard + infra only). */
 export function AppTopBar() {
   const pathname = usePathname();
+  const autoRefreshEnabled = isAutoRefreshRoute(pathname);
   const { title, description, action, bumpRefresh } = usePageChrome();
-  const { ms, setMs, progress, lastRefreshedAt } = useAutoRefresh(bumpRefresh);
+  const { ms, setMs, progress, lastRefreshedAt } = useAutoRefresh(bumpRefresh, autoRefreshEnabled);
 
   return (
     <div className="relative flex-none border-b bg-background">
@@ -31,17 +33,21 @@ export function AppTopBar() {
         <div className="flex flex-wrap items-center gap-2">
           {action}
           <LocalClock />
-          <AutoRefreshControl ms={ms} onChange={setMs} lastRefreshedAt={lastRefreshedAt} />
+          {autoRefreshEnabled && (
+            <AutoRefreshControl ms={ms} onChange={setMs} lastRefreshedAt={lastRefreshedAt} />
+          )}
         </div>
       </div>
-      <Progress
-        value={ms > 0 ? progress * 100 : 0}
-        aria-label="Time until next auto-refresh"
-        className={cn(
-          "absolute inset-x-0 -bottom-px h-auto gap-0 [&>[data-slot=progress-track]]:h-[3px] [&>[data-slot=progress-track]]:rounded-none [&>[data-slot=progress-track]]:bg-transparent [&_[data-slot=progress-indicator]]:bg-sky-600",
-          ms === 0 && "hidden"
-        )}
-      />
+      {autoRefreshEnabled && (
+        <Progress
+          value={ms > 0 ? progress * 100 : 0}
+          aria-label="Time until next auto-refresh"
+          className={cn(
+            "absolute inset-x-0 -bottom-px h-auto gap-0 [&>[data-slot=progress-track]]:h-[3px] [&>[data-slot=progress-track]]:rounded-none [&>[data-slot=progress-track]]:bg-transparent [&_[data-slot=progress-indicator]]:bg-sky-600",
+            ms === 0 && "hidden"
+          )}
+        />
+      )}
     </div>
   );
 }

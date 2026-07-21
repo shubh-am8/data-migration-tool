@@ -8,7 +8,7 @@ import { AppLoader } from "@/components/shared/AppLoader";
 import { ConfigFieldDef, ConnectionForm, ConnectionFormValues } from "@/components/connectors/ConnectionForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api-client";
-import { notifyConnectionTestResult } from "@/lib/connection-test";
+import type { ConnectionTestResult } from "@/lib/connection-test";
 import { notify } from "@/lib/notify";
 
 interface Plugin {
@@ -47,26 +47,24 @@ export default function EditConnectionPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  async function handleTest(values: ConnectionFormValues) {
-    if (!connection) return;
-    const result = await apiFetch<{ success: boolean; message: string; latencyMs: number }>(
-      "/api/connections/test",
-      {
-        method: "POST",
-        body: JSON.stringify({ pluginId: connection.pluginId, config: valuesToConfig(values) }),
-      }
-    );
-    notifyConnectionTestResult(result);
+  async function handleTest(values: ConnectionFormValues): Promise<ConnectionTestResult> {
+    if (!connection) {
+      return { success: false, message: "Connection not loaded", latencyMs: 0 };
+    }
+    return apiFetch<ConnectionTestResult>("/api/connections/test", {
+      method: "POST",
+      body: JSON.stringify({ pluginId: connection.pluginId, config: valuesToConfig(values) }),
+    });
   }
 
-  async function handleSubmit(values: ConnectionFormValues, sandbox: boolean) {
+  async function handleSubmit(values: ConnectionFormValues) {
     try {
       await apiFetch(`/api/connections/${id}`, {
         method: "PUT",
         body: JSON.stringify({
           name: values.name,
           config: valuesToConfig(values),
-          sandbox,
+          sandbox: true,
         }),
       });
       notify.success("Connection updated");
@@ -107,13 +105,13 @@ export default function EditConnectionPage() {
         title="Edit Connection"
         description={`Update settings for ${connection.name}`}
       />
-      <Card>
+      <Card className="mx-auto w-full max-w-3xl">
         <CardContent className="pt-6">
           <ConnectionForm
             key={connection.id}
             fields={fields}
             initial={initial}
-            initialSandbox={connection.sandbox}
+            trustExisting
             onTest={handleTest}
             onSubmit={handleSubmit}
           />

@@ -37,6 +37,23 @@ final class SimulationTimestamps {
         return spread(boundary, now, rowIndex - coldCount, hotCount);
     }
 
+    /** All rows land in {@code [boundary, now)}. */
+    static Instant hotOnly(Instant now, int hotDays, int rowIndex, int totalRows) {
+        Instant boundary = now.minus(Duration.ofDays(Math.max(hotDays, 0)));
+        return spread(boundary, now, rowIndex, totalRows);
+    }
+
+    /** First half hot, second half cold — inverse of {@link #hotThenCold}. */
+    static Instant coldThenHot(Instant now, int hotDays, int rowIndex, int totalRows) {
+        Instant boundary = now.minus(Duration.ofDays(Math.max(hotDays, 0)));
+        int hotCount = totalRows / 2;
+        int coldCount = totalRows - hotCount;
+        if (rowIndex < hotCount) {
+            return spread(boundary, now, rowIndex, hotCount);
+        }
+        return spread(boundary.minus(COLD_SPAN), boundary, rowIndex - hotCount, coldCount);
+    }
+
     /** Evenly spaces {@code index} of {@code count} points across {@code [start, end)}. */
     private static Instant spread(Instant start, Instant end, int index, int count) {
         if (count <= 1) return start;

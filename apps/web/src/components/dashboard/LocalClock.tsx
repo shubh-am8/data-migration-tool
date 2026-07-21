@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const TIME_ZONE = "Asia/Kolkata";
 const TIME_ZONE_LABEL = "Asia/Calcutta (IST)";
 
-/** Live clock card fixed to Asia/Kolkata (labeled Calcutta/IST) — universal top bar chrome. */
+/** Live clock fixed to Asia/Kolkata — universal top bar chrome. */
 export function LocalClock({ className }: { className?: string }) {
   const [now, setNow] = useState(() => new Date());
 
@@ -27,21 +27,26 @@ export function LocalClock({ className }: { className?: string }) {
     timeZone: TIME_ZONE,
     day: "2-digit",
     month: "short",
+    year: "numeric",
   });
 
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-lg border-l-4 border-l-sky-600 bg-sky-500/10 px-3 py-1.5",
+        "flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-1.5",
         className
       )}
     >
-      <ClockIcon className="size-4 shrink-0 text-sky-600" aria-hidden />
-      <div className="leading-tight">
-        <time dateTime={now.toISOString()} aria-live="off" className="block font-mono text-sm font-semibold tabular-nums">
-          {date} {time}
+      <ClockIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <div className="min-w-0 leading-tight">
+        <time
+          dateTime={now.toISOString()}
+          aria-live="off"
+          className="block truncate font-mono text-sm font-semibold tabular-nums"
+        >
+          {date} · {time}
         </time>
-        <p className="text-[0.65rem] font-medium tracking-wide text-sky-700 dark:text-sky-400">{TIME_ZONE_LABEL}</p>
+        <p className="truncate text-[0.65rem] font-medium text-muted-foreground">{TIME_ZONE_LABEL}</p>
       </div>
     </div>
   );

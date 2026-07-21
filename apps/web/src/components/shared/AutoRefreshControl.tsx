@@ -27,7 +27,7 @@ const TICK_MS = 250;
  * ticking clock; calls `onTick` each time the chosen interval elapses. Returns
  * elapsed/interval so the parent (AppTopBar) can render its own progress bar.
  */
-export function useAutoRefresh(onTick: () => void) {
+export function useAutoRefresh(onTick: () => void, enabled = true) {
   const [ms, setMsState] = useState<AutoRefreshMs>(() =>
     typeof window === "undefined"
       ? 0
@@ -43,7 +43,7 @@ export function useAutoRefresh(onTick: () => void) {
   }, []);
 
   useEffect(() => {
-    if (!ms) return;
+    if (!ms || !enabled) return;
     // Plain counter (not React state) so the tick/refresh side effects run once per
     // interval, directly in the timer callback — never inside a setState updater,
     // which React may invoke while rendering an unrelated component.
@@ -60,7 +60,7 @@ export function useAutoRefresh(onTick: () => void) {
       setLastRefreshedAt(new Date());
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [ms, onTick]);
+  }, [ms, onTick, enabled]);
 
   return { ms, setMs, progress: ms ? elapsedMs / ms : 0, lastRefreshedAt };
 }

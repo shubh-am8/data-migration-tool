@@ -1,0 +1,43 @@
+---
+description: Marketplace plugin cards — layout, docs links, footer actions
+globs: apps/web/src/components/marketplace/**,apps/web/src/app/connectors/**
+alwaysApply: false
+---
+
+# Marketplace plugin cards
+
+Use **`MarketplacePluginCard`** (`@/components/marketplace/MarketplacePluginCard`) for every marketplace / connector catalog tile. Do not hand-roll `Card` markup on marketplace pages.
+
+## Layout contract
+
+```tsx
+<Card className="flex h-full min-w-0 flex-col">
+  <CardHeader className="gap-3">
+    {/* Title on its own row; badges in flex-wrap — never squeeze badges beside title */}
+    <CardTitle className="truncate">{name}</CardTitle>
+    <div className="flex flex-wrap gap-1">{/* kind, version, installed */}</div>
+    <CardDescription className="line-clamp-3">{description}</CardDescription>
+  </CardHeader>
+  <CardContent className="flex-1">…</CardContent>
+  <CardFooter className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t bg-muted/50">
+    <DocLink slug={pluginDocSlug(id)}>Docs</DocLink>
+    {/* action buttons */}
+  </CardFooter>
+</Card>
+```
+
+## Grid
+
+Parent grid: `grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3` so equal-height rows and responsive columns.
+
+## Docs slugs
+
+Map plugin IDs in `lib/plugin-docs.ts` (`pluginDocSlug`). Unknown IDs fall back to `marketplace`.
+
+## Custom connector CTA
+
+Use **`BuildYourOwnCard`** for the upload-your-own tile — same footer pattern with `DocLink` to `adding-a-connector` and `connector-sdk`.
+
+## Deprecation
+
+`ConnectorCard` re-exports `MarketplacePluginCard` for backward compatibility — prefer the marketplace import in new code.

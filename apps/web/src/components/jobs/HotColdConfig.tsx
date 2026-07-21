@@ -2,13 +2,8 @@
 
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/option-select";
+import { MIGRATION_MODE_OPTIONS, RANGE_END_MODE_OPTIONS } from "@/lib/migration-mode-options";
 
 export interface HotColdConfigPatch {
   migrationMode?: string;
@@ -51,14 +46,12 @@ export function HotColdConfig({
     <FieldGroup>
       <Field>
         <FieldLabel>Migration Mode</FieldLabel>
-        <Select value={migrationMode} onValueChange={(v) => v && onChange({ migrationMode: v })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="HOT_ONLY">Hot only</SelectItem>
-            <SelectItem value="COLD_ONLY">Cold only</SelectItem>
-            <SelectItem value="HOT_THEN_COLD">Hot then cold</SelectItem>
-          </SelectContent>
-        </Select>
+        <OptionSelect
+          value={migrationMode}
+          onValueChange={(v) => onChange({ migrationMode: v })}
+          options={[...MIGRATION_MODE_OPTIONS]}
+          placeholder="Select migration mode"
+        />
       </Field>
       {showRange && (
         <>
@@ -72,13 +65,12 @@ export function HotColdConfig({
           </Field>
           <Field>
             <FieldLabel>End mode</FieldLabel>
-            <Select value={rangeEndMode} onValueChange={(v) => v && onChange({ rangeEndMode: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="NOW">Always now</SelectItem>
-                <SelectItem value="FIXED">Fixed end</SelectItem>
-              </SelectContent>
-            </Select>
+            <OptionSelect
+              value={rangeEndMode}
+              onValueChange={(v) => onChange({ rangeEndMode: v })}
+              options={[...RANGE_END_MODE_OPTIONS]}
+              placeholder="Select end mode"
+            />
           </Field>
           {rangeEndMode === "FIXED" && (
             <Field>

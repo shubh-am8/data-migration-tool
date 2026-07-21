@@ -58,7 +58,7 @@ public class SimulationEngine {
             conn.setAutoCommit(false);
             try {
                 insertRows(conn, schema, table, tsColumn, config, coldOnlyScenario, hotDays, now, runId);
-                if (!coldOnlyScenario && config.updateRatio() > 0) {
+                if (!coldOnlyScenario && !"HOT_ONLY".equals(config.scenario()) && config.updateRatio() > 0) {
                     touchHotFraction(conn, schema, table, config, runId, now);
                 }
                 conn.commit();
@@ -78,9 +78,7 @@ public class SimulationEngine {
             + " (order_code, amount_cents, " + tsColumn + ") VALUES (?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < config.rows(); i++) {
-                Instant ts = coldOnlyScenario
-                    ? SimulationTimestamps.coldOnly(now, hotDays, i, config.rows())
-                    : SimulationTimestamps.hotThenCold(now, hotDays, i, config.rows());
+                Instant ts = timestampForScenario(config.scenario(), coldOnlyScenario, now, hotDays, i, config.rows());
                 ps.setString(1, "SIM-" + runId + "-" + i);
                 ps.setInt(2, 1000 + i);
                 ps.setTimestamp(3, Timestamp.from(ts));
@@ -88,6 +86,18 @@ public class SimulationEngine {
             }
             ps.executeBatch();
         }
+    }
+
+    private static Instant timestampForScenario(String scenario, boolean coldOnlyScenario,
+                                                  Instant now, int hotDays, int rowIndex, int totalRows) {
+        if (coldOnlyScenario || "COLD_ONLY".equals(scenario)) {
+            return SimulationTimestamps.coldOnly(now, hotDays, rowIndex, totalRows);
+        }
+        return switch (scenario) {
+            case "HOT_ONLY" -> SimulationTimestamps.hotOnly(now, hotDays, rowIndex, totalRows);
+            case "COLD_THEN_HOT" -> SimulationTimestamps.coldThenHot(now, hotDays, rowIndex, totalRows);
+            default -> SimulationTimestamps.hotThenCold(now, hotDays, rowIndex, totalRows);
+        };
     }
 
     /** Bumps {@code updateRatio} of this run's freshly inserted rows to {@code updated_at = now}. */

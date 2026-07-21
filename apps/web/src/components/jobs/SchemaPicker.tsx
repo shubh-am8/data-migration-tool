@@ -1,13 +1,7 @@
 "use client";
 
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/option-select";
 
 interface SchemaPickerProps {
   schemas: string[];
@@ -16,18 +10,18 @@ interface SchemaPickerProps {
 }
 
 export function SchemaPicker({ schemas, value, onChange }: SchemaPickerProps) {
+  const options = schemas.map((s) => ({ value: s, label: s }));
+
   return (
     <FieldGroup>
       <Field>
         <FieldLabel>Schema</FieldLabel>
-        <Select value={value} onValueChange={(v) => v && onChange(v)}>
-          <SelectTrigger><SelectValue placeholder="Select schema" /></SelectTrigger>
-          <SelectContent>
-            {schemas.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <OptionSelect
+          value={value}
+          onValueChange={onChange}
+          options={options}
+          placeholder="Select schema"
+        />
       </Field>
     </FieldGroup>
   );

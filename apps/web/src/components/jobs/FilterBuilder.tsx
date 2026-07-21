@@ -3,13 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { OptionSelect } from "@/components/ui/option-select";
+import { filterOperatorOptions } from "@/lib/filter-operator-labels";
 
 export interface FilterRow {
   column: string;
@@ -56,23 +51,23 @@ export function FilterBuilder({ columns, filters, onChange }: FilterBuilderProps
         <div key={i} className="flex flex-wrap items-end gap-2 rounded-md border p-3">
           <Field>
             <FieldLabel>Column</FieldLabel>
-            <Select value={f.column} onValueChange={(v) => v && updateFilter(i, { column: v, operator: "EQ" })}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {columns.map((c) => <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <OptionSelect
+              className="w-40"
+              value={f.column}
+              onValueChange={(v) => updateFilter(i, { column: v, operator: "EQ" })}
+              options={columns.map((c) => ({ value: c.name, label: c.name }))}
+              placeholder="Column"
+            />
           </Field>
           <Field>
             <FieldLabel>Operator</FieldLabel>
-            <Select value={f.operator} onValueChange={(v) => v && updateFilter(i, { operator: v })}>
-              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(OPERATORS_BY_TYPE[columnType(f.column)] || []).map((op) => (
-                  <SelectItem key={op} value={op}>{op}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <OptionSelect
+              className="w-48"
+              value={f.operator}
+              onValueChange={(v) => updateFilter(i, { operator: v })}
+              options={filterOperatorOptions(OPERATORS_BY_TYPE[columnType(f.column)] || [])}
+              placeholder="Operator"
+            />
           </Field>
           {f.operator !== "IS_NULL" && (
             <Field>

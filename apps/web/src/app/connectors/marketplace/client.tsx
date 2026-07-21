@@ -6,9 +6,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SetPageChrome } from "@/components/layout/PageChromeContext";
 import { AppLoader } from "@/components/shared/AppLoader";
 import { ConnectorCard } from "@/components/connectors/ConnectorCard";
-import { DocLink } from "@/components/shared/DocLink";
+import { BuildYourOwnCard } from "@/components/marketplace/BuildYourOwnCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { apiFetch, API_URL } from "@/lib/api-client";
 import { notify } from "@/lib/notify";
@@ -144,7 +143,7 @@ export default function MarketplaceClient() {
         {loading ? (
           <AppLoader />
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {visible.map((p) => (
               <ConnectorCard
                 key={p.id}
@@ -156,21 +155,7 @@ export default function MarketplaceClient() {
                 onAdd={() => router.push(`/connections/new?plugin=${p.id}`)}
               />
             ))}
-            <Card className="flex flex-col">
-              <CardHeader>
-                <CardTitle>Build your own</CardTitle>
-                <CardDescription>
-                  Implement the ConnectorPlugin SPI, package a JAR, and upload it here.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex min-w-0 flex-col gap-2">
-                <DocLink slug="adding-a-connector" />
-                <p className="text-sm text-muted-foreground">
-                  Open the guide in-app, or read the same file in the repo under{" "}
-                  <code className="break-all">docs/connectors/</code>.
-                </p>
-              </CardContent>
-            </Card>
+            <BuildYourOwnCard />
           </div>
         )}
       </div>

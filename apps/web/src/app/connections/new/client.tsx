@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { apiFetch } from "@/lib/api-client";
-import { notifyConnectionTestResult } from "@/lib/connection-test";
+import type { ConnectionTestResult } from "@/lib/connection-test";
 import { notify } from "@/lib/notify";
 
 interface Plugin {
@@ -51,23 +51,24 @@ export default function NewConnectionClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleTest(values: ConnectionFormValues) {
-    if (!pluginId) return;
-    const result = await apiFetch<{ success: boolean; message: string; latencyMs: number }>("/api/connections/test", {
+  async function handleTest(values: ConnectionFormValues): Promise<ConnectionTestResult> {
+    if (!pluginId) {
+      return { success: false, message: "Select a connector first", latencyMs: 0 };
+    }
+    return apiFetch<ConnectionTestResult>("/api/connections/test", {
       method: "POST",
       body: JSON.stringify({ pluginId, config: valuesToConfig(values) }),
     });
-    notifyConnectionTestResult(result);
   }
 
-  async function handleSubmit(values: ConnectionFormValues, sandbox: boolean) {
+  async function handleSubmit(values: ConnectionFormValues) {
     if (!pluginId) {
       notify.error("Select an installed connector first");
       return;
     }
     await apiFetch("/api/connections", {
       method: "POST",
-      body: JSON.stringify({ pluginId, name: values.name, config: valuesToConfig(values), sandbox }),
+      body: JSON.stringify({ pluginId, name: values.name, config: valuesToConfig(values), sandbox: true }),
     });
     notify.success("Connection saved");
     router.push("/connections");
@@ -103,7 +104,7 @@ export default function NewConnectionClient() {
   return (
     <AppShell>
       <SetPageChrome title="Add Connection" description="Choose an installed connector, then configure it" />
-      <Card>
+      <Card className="mx-auto w-full max-w-3xl">
         <CardContent className="flex flex-col gap-6 pt-6">
           <Field>
             <FieldLabel>Connector</FieldLabel>
